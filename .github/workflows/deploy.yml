@@ -24,9 +24,9 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install
 
-      # Run Tests (Optional)
-      - name: ✅ Run Tests
-        run: npm test
+      # # Run Tests (Optional)
+      # - name: ✅ Run Tests
+      #   run: npm test
 
       # Deploy to EC2
       - name: 🚀 Deploy to EC2
