@@ -7,12 +7,12 @@ const userSchema = new mongoose.Schema(
         password: { type: String, required: true },
         phone: { type: String },
         profilePicture: { type: String },
+        dob: { type: Date },
         role: { type: String, enum: ["user", "admin"], default: "user" },
         lastLogin: { type: Date, default: Date.now },
         status: { type: String, enum: ["active", "inactive", "banned"], default: "active" },
         location: {
-            city: String,
-            country: String
+            city: { type: String }
         },
         preferences: {
             theme: { type: String, default: "light" },
@@ -22,5 +22,4 @@ const userSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);
