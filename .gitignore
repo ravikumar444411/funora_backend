@@ -27,3 +27,4 @@ Thumbs.db
 dist/
 build/
 coverage/
+src/config/serviceAccountKey.json
