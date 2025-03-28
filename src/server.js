@@ -4,7 +4,7 @@ const PORT = process.env.PORT || 3000;
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("Hello, World! 2 🌎🚀");
+  res.send("Hello, World! 3 🌎🚀");
 });
 
 app.listen(PORT, () => {
