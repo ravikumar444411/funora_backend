@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const CategorySchema = new mongoose.Schema(
     {
         categoryName: { type: String, required: true },
+        categoryType: { type: String, required: true },
         categoryImage: { type: String, default: "" },
         isActive: { type: Boolean, default: true },
     },

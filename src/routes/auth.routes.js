@@ -1,7 +1,6 @@
 const express = require("express");
-const { sendOTP, verifyOTP } = require("../controllers/authController");
+const { sendOTP, verifyOTP, registerUser, loginUser, getUser, deleteUser, checkByphone, loginNew, verifyToken, registerNew } = require("../controllers/auth.controller");
 const authMiddleware = require("../middlewares/authMiddleware");
-const { registerUser, loginUser, getUser, deleteUser } = require("../controllers/authController");
 
 
 const router = express.Router();
@@ -18,5 +17,13 @@ router.delete("/:uid", deleteUser);
 router.get("/protected", authMiddleware, (req, res) => {
     res.json({ success: true, message: "Access granted", user: req.user });
 });
+
+
+
+//New auth methods
+router.post("/check_phone_number", checkByphone);
+router.post("/login_new", loginNew);
+router.post("/verify_token", verifyToken);
+router.post("/register_new", registerNew);
 
 module.exports = router;

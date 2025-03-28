@@ -31,15 +31,17 @@ const formatEventResponse = (event) => {
         _id: event?._id ?? null,
         eventTitle: event?.eventTitle ?? null,
         eventDescription: event?.eventDescription ?? null,
-        eventCategory: event?.eventCategory ?? null,
+        organizerId: event?.organizerId ?? null, // Added organizerId
         eventDateFrom: event?.eventDateFrom ?? null,
         eventDateTo: event?.eventDateTo ?? null,
         eventTimeFrom: event?.eventTimeFrom ?? null,
         eventTimeTo: event?.eventTimeTo ?? null,
         eventDuration: event?.eventDuration ?? null,
         eventVenue: event?.eventVenue ?? null,
-        isPublic: event?.isPublic ?? null,
-        images: event?.images ?? null
+        isPublic: event?.isPublic ?? true,
+        media: event?.media ?? [],
+        ticketPrice: event?.ticketPrice ?? 0,
+        isOnline: event?.isOnline ?? false,
     };
 };
 
@@ -47,10 +49,8 @@ const formatCategoryResponse = (category) => {
     return {
         _id: category._id,
         categoryName: category.categoryName,
+        categoryType: category.categoryType,
         categoryImage: category.categoryImage || "",
-        isActive: category.isActive,
-        createdAt: category.createdAt,
-        updatedAt: category.updatedAt
     };
 };
 
@@ -62,10 +62,69 @@ const formatPreferencesResponse = (preference) => {
         locationPreference: preference?.locationPreference ?? null,
         eventType: preference?.eventType ?? "In-Person",
         budget: preference?.budget ?? "Paid",
-        createdAt: preference?.createdAt ?? null,
-        updatedAt: preference?.updatedAt ?? null
+        timeFrame: preference?.timeFrame ?? "Today",
+        fromDate: preference?.timeFrame === "Custom" ? preference?.fromDate ?? null : null,
+        toDate: preference?.timeFrame === "Custom" ? preference?.toDate ?? null : null,
+        timeOfDay: preference?.timeOfDay ?? [],
+        fromTime: preference?.timeOfDay?.includes("Custom") ? preference?.fromTime ?? null : null,
+        toTime: preference?.timeOfDay?.includes("Custom") ? preference?.toTime ?? null : null,
+        priceRange: {
+            min: preference?.priceRange?.min ?? 0,
+            max: preference?.priceRange?.max ?? 1000
+        },
     };
 };
 
 
-module.exports = { formatEventResponse, sendResponse, formatCategoryResponse, formatUserResponse, formatPreferencesResponse };
+const formatFavoriteEventResponse = (favoriteEvent) => {
+    return {
+        _id: favoriteEvent?._id ?? null,
+        eventId: favoriteEvent?.eventId ?? null,
+        userId: favoriteEvent?.userId ?? null,
+        isFavorite: favoriteEvent?.isFavorite ?? false,
+    };
+};
+
+
+const formatOrganizerResponse = (organizer) => {
+    return {
+        organizerId: organizer?._id ?? null,
+        name: organizer?.name ?? "Unknown Organizer",
+        phone: organizer?.phone ?? null,
+        profilePicture: organizer?.profilePicture ?? null,
+        description: organizer?.description ?? "No description available",
+        website: organizer?.website ?? null,
+        socialLinks: {
+            facebook: organizer?.socialLinks?.facebook ?? null,
+            twitter: organizer?.socialLinks?.twitter ?? null,
+            instagram: organizer?.socialLinks?.instagram ?? null
+        }
+    };
+};
+
+
+const formatAttendeeResponse = (attendee) => {
+    return {
+        id: attendee._id,
+        eventId: attendee.eventId,
+        userId: attendee.userId,
+        status: attendee.status,
+    };
+};
+
+const formatFeedbackResponse = (feedback) => {
+    return {
+        id: feedback._id,
+        eventId: feedback.eventId,
+        userId: feedback.userId,
+        comment: feedback.comment,
+        createdAt: feedback.createdAt,
+        updatedAt: feedback.updatedAt
+    };
+};
+
+
+module.exports = {
+    formatUserResponse, formatFeedbackResponse, formatAttendeeResponse, formatEventResponse, sendResponse,
+    formatPreferencesResponse, formatFavoriteEventResponse, formatCategoryResponse, formatOrganizerResponse
+};

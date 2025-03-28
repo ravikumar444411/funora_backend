@@ -1,5 +1,5 @@
 const express = require('express');
-const { createEvent, getEvents, getEventById, updateEvent, deleteEvent } = require('../controllers/event.controller');
+const { createEvent, getEvents, getEventById, updateEvent, deleteEvent, getPopularEvents, getRecommendedEvents } = require('../controllers/event.controller');
 
 const upload = require("../config/multer");
 const { getFilteredEvents } = require('../controllers/filterEvent.controller');
@@ -14,9 +14,15 @@ router.get('/filter', getFilteredEvents);          // Get search & filter Events
 router.post("/create", upload.array("images"), createEvent);
 router.post('/', createEvent);       // Create an Event
 router.get('/', getEvents);          // Get All Events
-router.get('/:id', getEventById);    // Get Event by ID
+router.post('/single_event', getEventById);    // Get Event by ID
 router.put('/:id', upload.array("images"), updateEvent);     // Update an Event
 router.delete('/:id', deleteEvent);  // Delete an Event
+
+
+//popular event
+router.post('/popular_event', getPopularEvents);
+router.post('/recommended_event', getRecommendedEvents);
+
 
 
 module.exports = router;

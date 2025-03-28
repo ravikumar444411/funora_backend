@@ -1,11 +1,12 @@
 const Category = require("../models/category.model");
+const Event = require('../models/event.model');
 const { sendResponse, formatCategoryResponse } = require("../utils/responseFormatter");
 const uploadToS3 = require("../utils/s3Upload");
 
 // Create Category
 exports.createCategory = async (req, res) => {
     try {
-        const { categoryName } = req.body;
+        const { categoryName, categoryType } = req.body;
 
         if (!categoryName) {
             return sendResponse(res, false, [], "Category name is required", 400);
@@ -18,6 +19,7 @@ exports.createCategory = async (req, res) => {
 
         const newCategory = new Category({
             categoryName,
+            categoryType,
             categoryImage,
             isActive: true,
         });
@@ -34,13 +36,32 @@ exports.createCategory = async (req, res) => {
 exports.getCategories = async (req, res) => {
     try {
         const categories = await Category.find({ isActive: true });
-        const formattedCategories = categories.map(formatCategoryResponse);
+
+        // Fetch event count for each category
+        const categoryStats = await Event.aggregate([
+            { $match: { isActive: true } }, // Only count active events
+            { $group: { _id: "$eventCategory", totalEvents: { $sum: 1 } } }
+        ]);
+
+        // Convert aggregation result into a lookup object
+        const eventCountMap = categoryStats.reduce((acc, stat) => {
+            acc[stat._id.toString()] = stat.totalEvents;
+            return acc;
+        }, {});
+
+        // Format categories with event count
+        const formattedCategories = categories.map((category) => ({
+            ...formatCategoryResponse(category),
+            totalEvents: eventCountMap[category._id.toString()] || 0 // Default to 0 if no events found
+        }));
+
         return sendResponse(res, true, formattedCategories, "Categories fetched successfully", 200);
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error fetching categories:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
 
 // Get Single Category by ID
 exports.getCategoryById = async (req, res) => {

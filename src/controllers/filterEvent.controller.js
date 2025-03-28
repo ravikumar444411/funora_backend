@@ -1,6 +1,8 @@
 const Event = require("../models/event.model");
-const { sendResponse } = require("../utils/responseFormatter");
+const Category = require("../models/category.model");
+const { sendResponse, formatEventResponse } = require("../utils/responseFormatter");
 
+//hero api
 exports.getFilteredEvents = async (req, res) => {
     try {
         let filters = { isActive: true }; // Only fetch active events
@@ -13,12 +15,16 @@ exports.getFilteredEvents = async (req, res) => {
             ];
         }
 
-        //Filter by Multiple Categories (Array Support)
+        // 🎯 Filter by Multiple Categories (Using categoryType)
         if (req.query.categories) {
-            const categoriesArray = req.query.categories.split(","); // Convert comma-separated list to array
-            filters.eventCategory = { $in: categoriesArray }; // Match any category in the array
-        }
+            const categoriesArray = req.query.categories.split(",");
 
+            // Fetch category IDs based on categoryType
+            const categoryDocs = await Category.find({ categoryType: { $in: categoriesArray } });
+            const categoryIds = categoryDocs.map(cat => cat._id.toString());
+
+            filters.eventCategory = { $in: categoryIds };
+        }
 
         // 📅 Date Range Filter
         if (req.query.startDate) {
@@ -27,21 +33,6 @@ exports.getFilteredEvents = async (req, res) => {
         if (req.query.endDate) {
             filters.eventDateTo = { $lte: new Date(req.query.endDate) };
         }
-
-        // // ⏰ Time of Day Filter
-        // if (req.query.timeOfDay) {
-        //     const timeRanges = {
-        //         morning: ["06:00", "12:00"],
-        //         afternoon: ["12:00", "18:00"],
-        //         evening: ["18:00", "24:00"],
-        //         night: ["00:00", "06:00"]
-        //     };
-        //     const [startTime, endTime] = timeRanges[req.query.timeOfDay] || [];
-        //     if (startTime && endTime) {
-        //         filters.eventTimeFrom = { $gte: startTime };
-        //         filters.eventTimeTo = { $lte: endTime };
-        //     }
-        // }
 
         // 📍 Location-Based Filtering (City)
         if (req.query.city) {
@@ -61,7 +52,7 @@ exports.getFilteredEvents = async (req, res) => {
         }
 
         // 🔽 Sorting (default: newest first)
-        let sortOptions = { eventDateFrom: -1 }; // Default: Newest first
+        let sortOptions = { eventDateFrom: -1 };
         if (req.query.sort === "oldest") {
             sortOptions = { eventDateFrom: 1 };
         } else if (req.query.sort === "priceAsc") {
@@ -70,22 +61,50 @@ exports.getFilteredEvents = async (req, res) => {
             sortOptions = { ticketPrice: -1 };
         }
 
-
-        // 📜 Infinite Scroll (Pagination)
-        const page = parseInt(req.query.page) || 1; // Default to page 1
-        const limit = parseInt(req.query.limit) || 5; // Default limit to 5 events per page
+        // 📜 Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5;
         const skip = (page - 1) * limit;
 
-        // Fetch total event count (for frontend reference)
+        // Fetch total event count
         const totalEvents = await Event.countDocuments(filters);
 
-        // Fetch paginated events
+        // Fetch events
         const events = await Event.find(filters)
             .sort(sortOptions)
             .skip(skip)
             .limit(limit);
 
-        return sendResponse(res, true, { events, totalEvents, currentPage: page, totalPages: Math.ceil(totalEvents / limit) }, "Events fetched successfully", 200);
+        // Fetch categoryType for each event
+        const categoryIds = [...new Set(events.map(event => event.eventCategory.toString()))];
+        const categoryMap = await Category.find({ _id: { $in: categoryIds } })
+            .then(categories => categories.reduce((acc, cat) => {
+                acc[cat._id.toString()] = cat.categoryType;
+                return acc;
+            }, {}));
+
+        // Format media array
+        const formatMedia = (mediaArray) => {
+            return mediaArray.map(url => {
+                const isImage = /\.(jpg|jpeg|png|gif)$/i.test(url);
+                const isVideo = /\.(mp4|mov|avi|wmv|mkv)$/i.test(url);
+                return isImage ? { type: "image", url } : isVideo ? { type: "video", url } : null;
+            }).filter(Boolean);
+        };
+
+        // Format response
+        const formattedEvents = events.map(event => ({
+            ...formatEventResponse(event),
+            categoryType: categoryMap[event.eventCategory.toString()] || "Unknown",
+            media: formatMedia(event.media || [])
+        }));
+
+        return sendResponse(res, true, {
+            events: formattedEvents,
+            totalEvents,
+            currentPage: page,
+            totalPages: Math.ceil(totalEvents / limit)
+        }, "Events fetched successfully", 200);
 
     } catch (error) {
         console.log("Error fetching events:", error);
