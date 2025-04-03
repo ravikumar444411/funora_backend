@@ -162,6 +162,7 @@ exports.verifyOTP = async (req, res) => {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         return res.json({ success: true, message: "OTP Verified", user: decodedToken });
     } catch (error) {
+        console.log("getting this Error:", error);
         return res.status(400).json({ success: false, message: "Invalid OTP", error });
     }
 };
@@ -184,6 +185,7 @@ exports.registerUser = async (req, res) => {
 
         return sendResponse(res, true, { uid: userRecord.uid, email: userRecord.email }, "User registered successfully", 201);
     } catch (error) {
+        console.log("getting this Error:", error);
         return sendResponse(res, false, [], error.message, 500);
     }
 };
@@ -199,6 +201,7 @@ exports.getUser = async (req, res) => {
 
         return sendResponse(res, true, userRecord, "User retrieved successfully", 200);
     } catch (error) {
+        console.log("getting this Error:", error);
         return sendResponse(res, false, [], error.message, 500);
     }
 };
@@ -212,6 +215,7 @@ exports.deleteUser = async (req, res) => {
 
         return sendResponse(res, true, [], "User deleted successfully", 200);
     } catch (error) {
+        console.log("getting this Error:", error);
         return sendResponse(res, false, [], error.message, 500);
     }
 };

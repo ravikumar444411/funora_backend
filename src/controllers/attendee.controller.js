@@ -25,7 +25,7 @@ exports.createAttendee = async (req, res) => {
             return sendResponse(res, true, newAttendee, "Attendance status recorded successfully", 200);
         }
     } catch (error) {
-        console.log("Create Attendee Error:", error);
+        console.log("getting this Error:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };

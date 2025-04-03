@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema(
         preferences: {
             theme: { type: String, default: "light" },
             language: { type: String, default: "en" }
-        }
+        },
+        fcmToken: { type: String, default: "" }
     },
     { timestamps: true }
 );
