@@ -7,7 +7,7 @@ const router = express.Router();
 
 
 //filter & search
-router.get('/filter', getFilteredEvents);          // Get search & filter Events
+router.post('/filter', getFilteredEvents);          // Get search & filter Events
 
 
 // Routes

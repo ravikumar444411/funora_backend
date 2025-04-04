@@ -124,7 +124,41 @@ const formatFeedbackResponse = (feedback) => {
 };
 
 
+const formatPopularEventResponse = (event) => {
+    return {
+        _id: event?._id ?? null,
+        eventTitle: event?.eventTitle ?? null,
+        eventDescription: event?.eventDescription ?? null,
+        eventDateFrom: event?.eventDateFrom ?? null,
+        eventDateTo: event?.eventDateTo ?? null,
+        eventTimeFrom: event?.eventTimeFrom ?? null,
+        eventTimeTo: event?.eventTimeTo ?? null,
+        eventDuration: event?.eventDuration ?? null,
+        eventVenue: event?.eventVenue ?? null,
+        ticketPrice: event?.ticketPrice ?? 0,
+    };
+};
+
+
+const formatRecommendedEventResponse = (event) => {
+    return {
+        _id: event?._id ?? null,
+        eventTitle: event?.eventTitle ?? null,
+        eventDescription: event?.eventDescription ?? null,
+        organizerId: event?.organizerId ?? null, // Added organizerId
+        eventDateFrom: event?.eventDateFrom ?? null,
+        eventDateTo: event?.eventDateTo ?? null,
+        eventTimeFrom: event?.eventTimeFrom ?? null,
+        eventTimeTo: event?.eventTimeTo ?? null,
+        eventDuration: event?.eventDuration ?? null,
+        eventVenue: event?.eventVenue ?? null,
+        ticketPrice: event?.ticketPrice ?? 0,
+    };
+};
+
+
 module.exports = {
     formatUserResponse, formatFeedbackResponse, formatAttendeeResponse, formatEventResponse, sendResponse,
-    formatPreferencesResponse, formatFavoriteEventResponse, formatCategoryResponse, formatOrganizerResponse
+    formatPreferencesResponse, formatFavoriteEventResponse, formatCategoryResponse, formatOrganizerResponse, formatPopularEventResponse,
+    formatRecommendedEventResponse
 };

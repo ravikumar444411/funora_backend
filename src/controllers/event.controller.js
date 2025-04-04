@@ -2,8 +2,10 @@ const Event = require('../models/event.model');
 const Category = require("../models/category.model");
 const FavoriteEvent = require("../models/favorite_event.model");
 const SharedEvent = require("../models/shared_event.model");
-const Organizer = require("../models/organizer.model"); // Import Organizer model
-const { formatEventResponse, sendResponse } = require("../utils/responseFormatter");
+const Organizer = require("../models/organizer.model");
+const Attendee = require("../models/attendee.model");
+const EventFeedback = require("../models/event_feedback.model");
+const { formatEventResponse, sendResponse, formatPopularEventResponse, formatRecommendedEventResponse } = require("../utils/responseFormatter");
 const uploadToS3 = require("../utils/s3Upload");
 
 // 🔹 Create Event
@@ -87,7 +89,14 @@ exports.getEventById = async (req, res) => {
             isFavorite = favoriteRecord ? favoriteRecord.isFavorite : false;
         }
 
-        // Format media array
+        // Count attendees marked as "going"
+        const goingCount = await Attendee.countDocuments({
+            eventId,
+            status: "going",
+            isActive: true
+        });
+
+        // Format media
         const formattedMedia = event.media.map((url) => {
             const extension = url.split('.').pop().toLowerCase();
             if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
@@ -98,17 +107,54 @@ exports.getEventById = async (req, res) => {
             return { type: "unknown", url };
         });
 
-        // Determine bannerUrl (first image URL or empty string)
+        const videoMedia = formattedMedia.find((media) => media.type === "video");
+        const videoUrl = videoMedia ? videoMedia.url : "";
+
         const imageMedia = formattedMedia.find((media) => media.type === "image");
         const bannerUrl = imageMedia ? imageMedia.url : "";
+
+        // Fetch event feedbacks
+        const feedbacks = await EventFeedback.find({ eventId, isActive: true })
+            .sort({ createdAt: -1 })
+            .populate("userId", "fullName profilePicture")
+            .lean();
+
+        let currentUserComment = null;
+        const otherComments = [];
+        const profilesPics = [];
+
+        feedbacks.forEach((feedback) => {
+            const formattedFeedback = {
+                feedbackId: feedback._id,
+                userId: feedback.userId._id,
+                name: feedback.userId.fullName,
+                profilePicture: feedback.userId.profilePicture,
+                comment: feedback.comment
+            };
+
+            if (userId && String(feedback.userId._id) === String(userId)) {
+                currentUserComment = formattedFeedback;
+            } else if (otherComments.length < 4) {
+                otherComments.push(formattedFeedback);
+                profilesPics.push(feedback.userId.profilePicture);
+            }
+        });
+
+        const topComments = currentUserComment
+            ? [currentUserComment, ...otherComments]
+            : otherComments;
 
         // Format event response
         const formattedEvent = formatEventResponse(event);
         formattedEvent.categoryType = categoryType;
         formattedEvent.media = formattedMedia;
+        formattedEvent.videoUrl = videoUrl;
         formattedEvent.bannerUrl = bannerUrl;
         formattedEvent.organizerId = organizer ? { ...organizer.toObject() } : null;
-        formattedEvent.isFavorite = isFavorite; // ✅ Use the isFavorite flag
+        formattedEvent.isFavorite = isFavorite;
+        formattedEvent.goingCount = goingCount;
+        formattedEvent.feedback = topComments;
+        formattedEvent.profilePics = profilesPics;
 
         return sendResponse(res, true, formattedEvent, "Event details fetched successfully", 200);
     } catch (error) {
@@ -116,6 +162,8 @@ exports.getEventById = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
+
 
 
 // 🔹 Update Event
@@ -191,6 +239,7 @@ exports.deleteEvent = async (req, res) => {
 // Events that have been shared the most (from SharedEvent).
 exports.getPopularEvents = async (req, res) => {
     try {
+        const userId = req.body.userId;
         // Aggregate like counts from FavoriteEvent
         const likeCounts = await FavoriteEvent.aggregate([
             { $match: { isFavorite: true } },
@@ -209,8 +258,23 @@ exports.getPopularEvents = async (req, res) => {
         // Fetch active events
         let events = await Event.find({ isActive: true }); //.populate("eventCategory organizerId");
 
+        const eventIds = events.map(event => event._id);
+        // ⭐ Fetch favorites for this user
+        let favoriteMap = new Set();
+        if (userId) {
+            const favorites = await FavoriteEvent.find({
+                userId,
+                eventId: { $in: eventIds },
+                isFavorite: true,
+                isActive: true
+            }).select("eventId");
+
+            favoriteMap = new Set(favorites.map(fav => fav.eventId.toString()));
+        }
+
         // Enhance events with likeCount, shareCount, formatted media, and bannerUrl
         events = events.map(event => {
+            const eventIdStr = event._id.toString();
             const likeCount = likeCountMap.get(event._id.toString()) || 0;
             const shareCount = shareCountMap.get(event._id.toString()) || 0;
 
@@ -230,11 +294,12 @@ exports.getPopularEvents = async (req, res) => {
             const bannerUrl = imageMedia ? imageMedia.url : "";
 
             // Format the event response using formatEventResponse
-            const formattedEvent = formatEventResponse(event);
+            const formattedEvent = formatPopularEventResponse(event);
             formattedEvent.bannerUrl = bannerUrl;
-            formattedEvent.media = formattedMedia;
-            formattedEvent.likeCount = likeCount;
-            formattedEvent.shareCount = shareCount;
+            // formattedEvent.media = formattedMedia;
+            // formattedEvent.likeCount = likeCount;
+            // formattedEvent.shareCount = shareCount;
+            formattedEvent.isFavorite = favoriteMap.has(eventIdStr)
 
             return formattedEvent;
         });
@@ -304,11 +369,11 @@ exports.getRecommendedEvents = async (req, res) => {
             const bannerUrl = imageMedia ? imageMedia.url : "";
 
             // Format event response
-            const formattedEvent = formatEventResponse(event);
+            const formattedEvent = formatRecommendedEventResponse(event);
             formattedEvent.bannerUrl = bannerUrl;
-            formattedEvent.media = formattedMedia;
-            formattedEvent.likeCount = likeCount;
-            formattedEvent.shareCount = shareCount;
+            // formattedEvent.media = formattedMedia;
+            // formattedEvent.likeCount = likeCount;
+            // formattedEvent.shareCount = shareCount;
 
             return formattedEvent;
         });
