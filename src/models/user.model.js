@@ -11,9 +11,7 @@ const userSchema = new mongoose.Schema(
         role: { type: String, enum: ["user", "admin"], default: "user" },
         lastLogin: { type: Date, default: Date.now },
         status: { type: String, enum: ["active", "inactive", "banned"], default: "active" },
-        location: {
-            city: { type: String }
-        },
+        location: { type: String },
         preferences: {
             theme: { type: String, default: "light" },
             language: { type: String, default: "en" }

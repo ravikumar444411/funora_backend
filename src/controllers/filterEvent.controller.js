@@ -3,6 +3,7 @@ const Attendee = require("../models/attendee.model");
 const Category = require("../models/category.model");
 const FavoriteEvent = require("../models/favorite_event.model");
 const { sendResponse, formatEventResponse } = require("../utils/responseFormatter");
+const moment = require('moment');
 
 //hero api
 exports.getFilteredEvents = async (req, res) => {
@@ -18,41 +19,64 @@ exports.getFilteredEvents = async (req, res) => {
             ];
         }
 
-        // 🎯 Filter by Multiple Categories (Using categoryType)
-        if (req.body.categories) {
-            const categoriesArray = req.body.categories.split(",");
+        // 🎯 Filter by Multiple Categories (Using categoryType or comma-separated string)
+        if (req.body.categories && req.body.categories.length > 0) {
+            let categoriesArray = req.body.categories;
 
-            // Fetch category IDs based on categoryType
-            const categoryDocs = await Category.find({ categoryType: { $in: categoriesArray } });
-            const categoryIds = categoryDocs.map(cat => cat._id.toString());
+            // Handle comma-separated string
+            if (typeof categoriesArray === 'string') {
+                categoriesArray = categoriesArray.split(',').map(cat => cat.trim().toLowerCase());
+            } else {
+                categoriesArray = categoriesArray.map(cat => cat.trim().toLowerCase());
+            }
 
-            filters.eventCategory = { $in: categoryIds };
+            // If "all" is NOT included, apply filtering
+            if (!categoriesArray.includes('all')) {
+                const categoryDocs = await Category.find({ categoryType: { $in: categoriesArray } });
+                const categoryIds = categoryDocs.map(cat => cat._id.toString());
+                filters.eventCategory = { $in: categoryIds };
+            }
         }
 
-        // 📅 Date Range Filter
-        if (req.body.startDate) {
-            filters.eventDateFrom = { $gte: new Date(req.body.startDate) };
-        }
-        if (req.body.endDate) {
-            filters.eventDateTo = { $lte: new Date(req.body.endDate) };
-        }
 
-        // 📍 Location-Based Filtering (City)
-        if (req.body.city) {
-            filters.eventVenue = { $regex: req.body.city, $options: "i" };
-        }
 
-        // 💰 Price-Based Filtering
-        if (req.body.price === "free") {
+
+        // 📅 Date Filter using selectedDay or custom range
+        const dateFilter = getFilterByDateType(req.body.selectedDay, req.body.startDate, req.body.endDate);
+
+
+
+        // 💰 Price-Based Filtering (if type includes "free")
+        if (req.body.type && req.body.type === "free") {
             filters.ticketPrice = 0;
-        } else if (req.body.price === "paid") {
-            filters.ticketPrice = { $gt: 0 };
+        } else {
+            if (req.body.priceRange && typeof req.body.priceRange.min === 'number' && typeof req.body.priceRange.max === 'number') {
+                filters.ticketPrice = {
+                    $gte: req.body.priceRange.min,
+                    $lte: req.body.priceRange.max
+                };
+            }
+
         }
 
-        // 🌍 Event Type (Online / In-Person)
-        if (req.body.type) {
-            filters.isOnline = req.body.type === "online";
-        }
+
+        filters = {
+            ...dateFilter,
+            ...filters
+        };
+
+
+        // // 💰 Price-Based Filtering
+        // if (req.body.price === "free") {
+        //     filters.ticketPrice = 0;
+        // } else if (req.body.price === "paid") {
+        //     filters.ticketPrice = { $gt: 0 };
+        // }
+
+        // // 🌍 Event Type (Online / In-Person)
+        // if (req.body.type) {
+        //     filters.isOnline = req.body.type === "online";
+        // }
 
         // 🔽 Sorting (default: newest first)
         let sortOptions = { eventDateFrom: -1 };
@@ -73,10 +97,20 @@ exports.getFilteredEvents = async (req, res) => {
         const totalEvents = await Event.countDocuments(filters);
 
         // Fetch events
-        const events = await Event.find(filters)
+        const allEvents = await Event.find(filters)
             .sort(sortOptions)
             .skip(skip)
             .limit(limit);
+
+
+        // 📅 time Filter using selectedTime or custom range
+        const events = filterEventsByTimeSlot(
+            allEvents,
+            req.body.selectedTime,
+            req.body.fromTime,
+            req.body.toTime
+        );
+
 
         // Fetch categoryType for each event
         const categoryIds = [...new Set(events.map(event => event.eventCategory.toString()))];
@@ -189,3 +223,127 @@ exports.getFilteredEvents = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
+
+const getFilterByDateType = (selectedDay, startDate, endDate) => {
+    if (selectedDay) {
+        switch (selectedDay.toLowerCase()) {
+            case 'today': {
+                const todayStart = moment().startOf('day').toDate();
+                const todayEnd = moment().endOf('day').toDate();
+
+                return {
+                    eventDateFrom: { $gte: todayStart, $lte: todayEnd }
+                };
+            }
+
+            case 'weekend': {
+                // 1 = Sunday, 7 = Saturday
+                return {
+                    $expr: {
+                        $in: [{ $dayOfWeek: '$eventDateFrom' }, [1, 7]]
+                    }
+                };
+            }
+
+            case 'weekday': {
+                // 2 to 6 => Monday to Friday
+                return {
+                    $expr: {
+                        $in: [{ $dayOfWeek: '$eventDateFrom' }, [2, 3, 4, 5, 6]]
+                    }
+                };
+            }
+
+            case 'month': {
+                const startOfMonth = moment().startOf('month').toDate();
+                const endOfMonth = moment().endOf('month').toDate();
+
+                return {
+                    eventDateFrom: { $gte: startOfMonth, $lte: endOfMonth }
+                };
+            }
+
+            case 'custom': {
+                if (startDate && endDate) {
+                    const from = new Date(startDate);
+                    const to = new Date(endDate);
+                    return {
+                        eventDateFrom: { $gte: from, $lte: to }
+                    };
+                } else {
+                    return {}; // No range provided, return all
+                }
+            }
+
+            case 'all':
+            default:
+                return {}; // No filter
+        }
+    } else {
+        return {};
+    }
+
+};
+
+
+// Utility to check overlapping time ranges
+function isTimeOverlapping(eventStart, eventEnd, slotStart, slotEnd) {
+    return eventStart.isBefore(slotEnd) && eventEnd.isAfter(slotStart);
+}
+
+// Main filtering function
+function filterEventsByTimeSlot(events, selectedSlot, customStartTime, customEndTime) {
+    if (selectedSlot) {
+        const slot = selectedSlot.toLowerCase();
+        let slotStart, slotEnd;
+
+        switch (slot) {
+            case 'morning':
+                slotStart = moment('05:00', 'HH:mm');
+                slotEnd = moment('12:00', 'HH:mm');
+                break;
+            case 'afternoon':
+                slotStart = moment('12:00', 'HH:mm');
+                slotEnd = moment('17:00', 'HH:mm');
+                break;
+            case 'evening':
+                slotStart = moment('17:00', 'HH:mm');
+                slotEnd = moment('21:00', 'HH:mm');
+                break;
+            case 'night':
+                slotStart = moment('21:00', 'HH:mm');
+                slotEnd = moment('23:59', 'HH:mm');
+                break;
+            case 'custom':
+                if (customStartTime && customEndTime) {
+                    const customStart = moment(customStartTime, ["h:mm A"]).format("HH:mm");
+                    const customEnd = moment(customEndTime, ["h:mm A"]).format("HH:mm");
+                    slotStart = moment(customStart, 'HH:mm');
+                    slotEnd = moment(customEnd, 'HH:mm');
+                } else {
+                    return events; // fallback to all if custom values are missing
+                }
+                break;
+            case 'all':
+            default:
+                return events; // return everything if no specific filter
+        }
+
+        return events.filter(event => {
+            if (!event.eventTimeFrom || !event.eventTimeTo) return false;
+
+            const eventStart = moment(event.eventTimeFrom, 'HH:mm');
+            const eventEnd = moment(event.eventTimeTo, 'HH:mm');
+
+            return isTimeOverlapping(eventStart, eventEnd, slotStart, slotEnd);
+        });
+    } else {
+        return events;
+    }
+
+}
+
+
+
+

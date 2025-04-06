@@ -1,5 +1,6 @@
 const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
+const Notification = require('../models/notification.model');
 const { formatUserResponse, sendResponse } = require("../utils/responseFormatter");
 
 
@@ -71,21 +72,53 @@ exports.getAllUsers = async (req, res) => {
 // 🔹 GET: Fetch Single Active User by ID
 exports.getUserById = async (req, res) => {
     try {
-        const user = await User.findOne({ _id: req.params.id, status: "active" }).select("-password");
+        const { userId } = req.body;
 
-        if (!user) return sendResponse(res, false, [], "User not found or inactive", 404);
+        const user = await User.findOne({ _id: userId, status: "active" }).select("-password");
+        if (!user) {
+            return sendResponse(res, false, [], "User not found or inactive", 404);
+        }
+
+        // Count total notifications for the user
+        const totalNotifications = await Notification.countDocuments({ userId });
 
         const formattedUser = formatUserResponse(user);
-        return sendResponse(res, true, formattedUser, "User fetched successfully", 200);
+
+        // Extract first name safely
+        const fullName = user.fullName || '';
+        const firstName = fullName.split(' ')[0] || '';
+
+        // Set placeholders
+        const email = user.email && user.email.trim() !== '' ? user.email : 'user@example.com';
+        const profilePicture = user.profilePicture && user.profilePicture.trim() !== '' ? user.profilePicture : 'https://img.freepik.com/premium-vector/man-avatar-profile-picture-vector-illustration_268834-538.jpg';
+        const dob = user.dob ? user.dob : new Date('1990-01-01');
+        const location = user.location && user.location.trim() !== '' ? user.location : 'Not specified';
+
+        const responseData = {
+            ...formattedUser,
+            totalNotifications,
+            firstName,
+            email,
+            profilePicture,
+            dob,
+            location
+        };
+
+        return sendResponse(res, true, responseData, "User fetched successfully", 200);
     } catch (error) {
+        console.error("Error fetching user:", error);
         return sendResponse(res, false, [], "Error fetching user", 500);
     }
 };
 
 
+
+
+
 // 🔹 PUT: Update User
 exports.updateUser = async (req, res) => {
     try {
+        const { userId } = req.body;
         const allowedFields = [
             "fullName",
             "phone",
@@ -115,7 +148,7 @@ exports.updateUser = async (req, res) => {
             return sendResponse(res, false, [], "No valid fields provided for update", 400);
         }
 
-        const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, { new: true });
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
 
         if (!updatedUser) {
             return sendResponse(res, false, [], "User not found", 404);

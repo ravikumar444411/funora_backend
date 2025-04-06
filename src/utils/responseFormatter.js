@@ -15,9 +15,7 @@ const formatUserResponse = (user) => {
         profilePicture: user?.profilePicture ?? null,
         dob: user?.dob ?? null,
         role: user?.role ?? "user",
-        location: {
-            city: user?.location?.city ?? null,
-        },
+        location: user?.location ?? null,
         preferences: {
             theme: user?.preferences?.theme ?? "light",
             language: user?.preferences?.language ?? "en"
@@ -79,8 +77,18 @@ const formatPreferencesResponse = (preference) => {
 const formatFavoriteEventResponse = (favoriteEvent) => {
     return {
         _id: favoriteEvent?._id ?? null,
-        eventId: favoriteEvent?.eventId ?? null,
-        userId: favoriteEvent?.userId ?? null,
+        eventTitle: favoriteEvent?.eventTitle ?? null,
+        eventDescription: favoriteEvent?.eventDescription ?? null,
+        organizerId: favoriteEvent?.organizerId ?? null, // Added organizerId
+        eventDateFrom: favoriteEvent?.eventDateFrom ?? null,
+        eventDateTo: favoriteEvent?.eventDateTo ?? null,
+        eventTimeFrom: favoriteEvent?.eventTimeFrom ?? null,
+        eventTimeTo: favoriteEvent?.eventTimeTo ?? null,
+        eventDuration: favoriteEvent?.eventDuration ?? null,
+        eventVenue: favoriteEvent?.eventVenue ?? null,
+        isPublic: favoriteEvent?.isPublic ?? true,
+        ticketPrice: favoriteEvent?.ticketPrice ?? 0,
+        isOnline: favoriteEvent?.isOnline ?? false,
         isFavorite: favoriteEvent?.isFavorite ?? false,
     };
 };
