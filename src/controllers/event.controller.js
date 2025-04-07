@@ -123,7 +123,7 @@ exports.getEventById = async (req, res) => {
         const otherComments = [];
         const profilesPics = [];
 
-        feedbacks.forEach((feedback) => {
+        feedbacks.filter(feedback => feedback.userId).forEach((feedback) => {
             const formattedFeedback = {
                 feedbackId: feedback._id,
                 userId: feedback.userId._id,

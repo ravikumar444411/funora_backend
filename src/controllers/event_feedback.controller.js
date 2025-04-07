@@ -1,7 +1,7 @@
 const EventFeedback = require("../models/event_feedback.model");
 const Attendee = require("../models/attendee.model");
 const User = require("../models/user.model");
-const { formatFeedbackResponse } = require("../utils/responseFormatter");
+const { formatFeedbackResponse, sendResponse } = require("../utils/responseFormatter");
 
 // 🔹 Post a Comment on Event
 exports.postEventComment = async (req, res) => {
@@ -95,5 +95,38 @@ exports.getEventSummary = async (req, res) => {
     } catch (error) {
         console.error("Error fetching event summary:", error);
         return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+
+// fetch all comments by event ID
+exports.getAllCommentsByEventId = async (req, res) => {
+    try {
+        const { eventId } = req.body;
+
+        if (!eventId) {
+            return sendResponse(res, false, [], "Event ID is required", 400);
+        }
+
+        const comments = await EventFeedback.find({ eventId, isActive: true })
+            .sort({ createdAt: -1 }) // latest first
+            .populate("userId", "fullName profilePicture")
+            .lean();
+
+        // filter out feedbacks where userId is null
+        const formattedComments = comments
+            .filter(feedback => feedback.userId) // skip if userId is null
+            .map((feedback) => ({
+                commentId: feedback._id,
+                comment: feedback.comment,
+                userId: feedback.userId._id,
+                fullName: feedback.userId.fullName,
+                profilePicture: feedback.userId.profilePicture,
+                createdAt: feedback.createdAt
+            }));
+
+        return sendResponse(res, true, formattedComments, "Comments fetched successfully", 200);
+    } catch (error) {
+        console.error("Error fetching comments:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
