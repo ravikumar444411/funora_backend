@@ -4,6 +4,12 @@ const { sendResponse } = require("../utils/responseFormatter");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { generateToken, verifyToken, verifyAndDecodeToken } = require("../utils/tokenService");
+const OtpModel = require("../models/otp.model");
+
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const verifySid = process.env.TWILIO_VERIFY_SID;
+const client = require("twilio")(accountSid, authToken);
 
 //API to login and encode token
 exports.loginNew = async (req, res) => {
@@ -239,6 +245,258 @@ exports.loginUser = async (req, res) => {
         return sendResponse(res, true, { token }, "Login successful", 200);
     } catch (error) {
         return sendResponse(res, false, [], error.message, 500);
+    }
+};
+
+/* this is new section of login and otp */
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+
+exports.sendOtpToMobile = async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        if (!phone) {
+            return sendResponse(res, false, [], "Phone number is required", 400);
+        }
+
+        const otpCode = generateOtp(); // 6-digit OTP
+        console.log("Your OTP is:", otpCode);
+
+        // Optionally send SMS via Twilio (uncomment if using production)
+        // await client.messages.create({
+        //     body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 5 minutes. 🚀`,
+        //     from: process.env.TWILIO_PHONE_NUMBER,
+        //     to: phone,
+        // });
+
+        // Create or update OTP record
+        const updatedOtp = await OtpModel.findOneAndUpdate(
+            { phone }, // condition
+            {
+                phone,
+                otpCode,
+                status: "pending",
+                createdAt: new Date(),
+                expiresAt: new Date(Date.now() + 1 * 60 * 1000),
+            },
+            {
+                upsert: true, // create if not exists
+                new: true,    // return the updated doc
+                setDefaultsOnInsert: true,
+            }
+        );
+
+        return sendResponse(res, true, { phone }, "OTP sent successfully", 200);
+    } catch (error) {
+        console.error("Error sending OTP:", error);
+        return sendResponse(res, false, [], "Failed to send OTP", 500);
+    }
+};
+
+
+// exports.loginOrRegisterWithMobile = async (req, res) => {
+//     try {
+//         const { phone } = req.body;
+
+//         // Validate input
+//         if (!phone) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Phone number is required",
+//             });
+//         }
+
+//         // Check if user already exists
+//         let user = await User.findOne({ phone });
+
+
+//         if (!user) {
+//             // Create new user with default fields
+//             const defaultPassword = await bcrypt.hash("Funora@123", 10);
+//             user = new User({
+//                 fullName: "Funora Explorer 🎉",
+//                 password: defaultPassword,
+//                 phone,
+//                 email: `user${Date.now()}@funora.app`, // unique placeholder email
+//                 dob: new Date("2000-01-01"), // default DOB for new users
+//                 signup: false,
+//                 createdAt: new Date(),
+//             });
+//             await user.save();
+//         }
+
+//         // Optionally: Generate token or session here if needed
+//         return res.status(200).json({
+//             success: true,
+//             message: "User login/registration successful",
+//             user: {
+//                 id: user._id,
+//                 phone: user.phone,
+//             },
+//         });
+//     } catch (error) {
+//         console.error("Login/Register error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal Server Error",
+//         });
+//     }
+// };
+
+exports.verifyOtpWithMobile = async (req, res) => {
+    try {
+        const { phone, otpCode } = req.body;
+
+        if (!phone || !otpCode) {
+            return sendResponse(res, true, { verified: false, isSignup: false, token: "" }, "Phone and OTP are required", 200);
+        }
+
+        const otpRecord = await OtpModel.findOne({ phone });
+
+        // If OTP not found (expired or deleted)
+        if (!otpRecord) {
+            return sendResponse(res, true, { verified: false, isSignup: false, token: "" }, "OTP expired or not found", 200);
+        }
+
+        // If OTP doesn't match
+        if (otpRecord.otpCode !== otpCode) {
+            return sendResponse(res, true, { verified: false, isSignup: false, token: "" }, "Invalid OTP", 200);
+        }
+
+        // OTP is valid
+        otpRecord.status = "verified";
+        await otpRecord.save();
+
+        // Check if user exists and read signup field
+        const user = await User.findOne({ phone });
+        const isSignup = user?.signup === true;
+
+        let token = "";
+        if (isSignup && user) {
+            token = await generateToken(user); // generate JWT token
+        }
+
+        return sendResponse(res, true, {
+            verified: true,
+            isSignup,
+            token
+        }, "OTP verified successfully", 200);
+
+    } catch (error) {
+        console.error("Error verifying OTP:", error);
+        return sendResponse(res, false, { verified: false, isSignup: false, token: "" }, "Failed to verify OTP", 500);
+    }
+};
+
+exports.completeUserProfile = async (req, res) => {
+    try {
+        const { phone, fullName, dob, email } = req.body;
+
+        // Validate input
+        if (!phone || !fullName || !dob || !email) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone, full name, and date of birth are required",
+            });
+        }
+
+        // Check if user exists
+        const user = await User.findOne({ phone });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        // Update user profile
+        user.fullName = fullName;
+        user.email = email;
+        user.dob = new Date(dob);
+        user.signup = true;
+
+        await user.save();
+
+        // Generate token
+        const token = await generateToken(user);
+
+        return res.status(200).json({
+            success: true,
+            message: "User profile updated successfully",
+            token,
+        });
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+        });
+    }
+};
+
+exports.loginOrRegisterWithMobile = async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        // Validate input
+        if (!phone) {
+            return sendResponse(res, false, [], "Phone number is required", 400);
+        }
+
+        // Step 1: Check if user already exists
+        let user = await User.findOne({ phone });
+
+        if (!user) {
+            // Create new user with default values
+            const defaultPassword = await bcrypt.hash("Funora@123", 10);
+            user = new User({
+                fullName: "Funora Explorer 🎉",
+                password: defaultPassword,
+                phone,
+                email: `user${Date.now()}@funora.app`,
+                dob: new Date("2000-01-01"),
+                signup: false,
+                createdAt: new Date(),
+            });
+            await user.save();
+        }
+
+        // Step 2: Generate OTP
+        const otpCode = generateOtp(); // 6-digit OTP
+        console.log("Generated OTP:", otpCode);
+
+        // Optional: Send SMS with OTP via Twilio
+        /*
+        await client.messages.create({
+            body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: phone,
+        });
+        */
+
+        // Step 3: Store OTP in DB (create or update)
+        await OtpModel.findOneAndUpdate(
+            { phone },
+            {
+                phone,
+                otpCode,
+                status: "pending",
+                createdAt: new Date(),
+                expiresAt: new Date(Date.now() + 5 * 60 * 1000), // expires in 1 min
+            },
+            {
+                upsert: true,
+                new: true,
+                setDefaultsOnInsert: true,
+            }
+        );
+
+        // Step 4: Respond back with basic user info (do not send OTP in prod)
+        return sendResponse(res, true, { phone }, "OTP sent successfully", 200);
+    } catch (error) {
+        console.error("Login/Register error:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
 

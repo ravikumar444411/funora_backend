@@ -14,6 +14,7 @@ const eventSchema = new mongoose.Schema({
     isPublic: { type: Boolean, default: true },
     media: { type: [String] },
     ticketPrice: { type: Number, default: 0 },
+    eventGuidance: { type: String },
     isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 

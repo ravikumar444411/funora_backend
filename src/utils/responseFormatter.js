@@ -40,6 +40,7 @@ const formatEventResponse = (event) => {
         media: event?.media ?? [],
         ticketPrice: event?.ticketPrice ?? 0,
         isOnline: event?.isOnline ?? false,
+        eventGuidance: event?.eventGuidance ?? "",
     };
 };
 

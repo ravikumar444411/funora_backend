@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
         lastLogin: { type: Date, default: Date.now },
         status: { type: String, enum: ["active", "inactive", "banned"], default: "active" },
         location: { type: String },
+        signup: { type: Boolean, default: false },
         preferences: {
             theme: { type: String, default: "light" },
             language: { type: String, default: "en" }

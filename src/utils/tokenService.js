@@ -23,8 +23,8 @@ const generateToken = async (user) => {
     try {
         const payload = {
             userId: user._id,
-            email: user.email ? hashData(user.email) : null,
-            phone: user.phone ? hashData(user.phone) : null,
+            email: user.email ? user.email : null,
+            phone: user.phone ? user.phone : null,
             fullName: user.fullName,
             role: user.role,
             dob: user.dob,

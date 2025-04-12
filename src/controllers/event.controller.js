@@ -13,7 +13,7 @@ exports.createEvent = async (req, res) => {
     try {
         const {
             eventTitle, eventDescription, eventCategory, eventDateFrom, eventDateTo,
-            eventTimeFrom, eventTimeTo, eventDuration, eventVenue, isPublic, organizerId
+            eventTimeFrom, eventTimeTo, eventDuration, eventVenue, isPublic, organizerId, eventGuidance
         } = req.body;
 
         if (!organizerId) {
@@ -30,6 +30,7 @@ exports.createEvent = async (req, res) => {
         const newEvent = new Event({
             eventTitle,
             eventDescription,
+            eventGuidance,
             eventCategory,
             eventDateFrom,
             eventDateTo,
@@ -176,7 +177,7 @@ exports.updateEvent = async (req, res) => {
         const allowedFields = [
             "eventTitle", "eventDescription", "eventCategory", "eventDateFrom",
             "eventDateTo", "eventTimeFrom", "eventTimeTo", "eventDuration",
-            "eventVenue", "isPublic", "organizerId" // ✅ Added Organizer ID
+            "eventVenue", "isPublic", "organizerId", "eventGuidance"
         ];
 
         allowedFields.forEach((field) => {

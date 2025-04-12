@@ -3,7 +3,6 @@ const FavoriteEvent = require('../models/favorite_event.model');
 const Category = require("../models/category.model");
 const Attendee = require("../models/attendee.model");
 
-
 //save & remove from favorite events
 exports.favoriteEventSave = async (req, res) => {
     try {
@@ -150,3 +149,43 @@ exports.getFavoriteEvents = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
+
+//save & remove from favorite events
+exports.remindMeEvents = async (req, res) => {
+    try {
+        const { eventId, userId } = req.body;
+
+        if (!eventId || !userId) {
+            return sendResponse(res, false, [], "Event ID and User ID are required", 400);
+        }
+
+        const existingFavorite = await FavoriteEvent.findOne({ eventId, userId });
+
+        if (existingFavorite) {
+            existingFavorite.remindMe = !existingFavorite.remindMe;
+            existingFavorite.updatedAt = new Date();
+            await existingFavorite.save();
+            return sendResponse(res, true, existingFavorite, "Remind me status toggled successfully", 200);
+        }
+
+        const favoriteData = {
+            eventId,
+            userId,
+            isFavorite: false,
+            remindMe: true,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        const favoriteEvent = new FavoriteEvent(favoriteData);
+        await favoriteEvent.save();
+
+        return sendResponse(res, true, favoriteEvent, "Event favorited successfully", 201);
+    } catch (error) {
+        console.log("Error favoriting event:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
