@@ -263,11 +263,11 @@ exports.sendOtpToMobile = async (req, res) => {
         console.log("Your OTP is:", otpCode);
 
         // Optionally send SMS via Twilio (uncomment if using production)
-        // await client.messages.create({
-        //     body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 5 minutes. 🚀`,
-        //     from: process.env.TWILIO_PHONE_NUMBER,
-        //     to: phone,
-        // });
+        await client.messages.create({
+            body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 5 minutes. 🚀`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: phone,
+        });
 
         // Create or update OTP record
         const updatedOtp = await OtpModel.findOneAndUpdate(
@@ -467,13 +467,13 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
         console.log("Generated OTP:", otpCode);
 
         // Optional: Send SMS with OTP via Twilio
-        /*
+
         await client.messages.create({
             body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: phone,
         });
-        */
+
 
         // Step 3: Store OTP in DB (create or update)
         await OtpModel.findOneAndUpdate(
