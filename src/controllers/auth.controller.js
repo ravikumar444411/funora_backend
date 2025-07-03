@@ -379,6 +379,7 @@ exports.verifyOtpWithMobile = async (req, res) => {
         return sendResponse(res, true, {
             verified: true,
             isSignup,
+            userId: user._id,
             token
         }, "OTP verified successfully", 200);
 
@@ -424,7 +425,8 @@ exports.completeUserProfile = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "User profile updated successfully",
-            token,
+            userId: user._id,
+            token
         });
     } catch (error) {
         console.error("Error updating user profile:", error);
@@ -467,7 +469,6 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
         console.log("Generated OTP:", otpCode);
 
         // Optional: Send SMS with OTP via Twilio
-
         await client.messages.create({
             body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
             from: process.env.TWILIO_PHONE_NUMBER,
