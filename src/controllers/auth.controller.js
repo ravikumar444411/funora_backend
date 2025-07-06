@@ -440,6 +440,7 @@ exports.completeUserProfile = async (req, res) => {
 exports.loginOrRegisterWithMobile = async (req, res) => {
     try {
         const { phone } = req.body;
+        let resData = { phone };
 
         // Validate input
         if (!phone) {
@@ -468,12 +469,18 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
         const otpCode = generateOtp(); // 6-digit OTP
         console.log("Generated OTP:", otpCode);
 
-        // Optional: Send SMS with OTP via Twilio
-        await client.messages.create({
-            body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: phone,
-        });
+
+        if (process.env.NODE_ENV !== 'STAGING') {
+            // Optional: Send SMS with OTP via Twilio
+            await client.messages.create({
+                body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
+                from: process.env.TWILIO_PHONE_NUMBER,
+                to: phone,
+            });
+            resData.otpCode = otpCode
+        } else {
+            resData.otpCode = otpCode;
+        }
 
 
         // Step 3: Store OTP in DB (create or update)
@@ -494,7 +501,7 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
         );
 
         // Step 4: Respond back with basic user info (do not send OTP in prod)
-        return sendResponse(res, true, { phone }, "OTP sent successfully", 200);
+        return sendResponse(res, true, resData, "OTP sent successfully", 200);
     } catch (error) {
         console.error("Login/Register error:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
