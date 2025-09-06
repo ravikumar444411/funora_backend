@@ -1,0 +1,136 @@
+#linux code
+
+sudo dnf install nodejs -y
+
+#install pm2 for manage & restart node
+sudo npm install -g pm2
+pm2 start app.js
+pm2 startup
+pm2 save
+
+pm2 list
+pm2 stop my-app
+pm2 restart my-app
+pm2 delete my-app
+
+
+# move to root
+sudo su - root
+
+#to install monogdb
+sudo vi /etc/yum.repos.d/mongodb-org-8.0.repo
+
+#pase below code for mongodb
+
+[mongodb-org-8.0]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/8.0/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-8.0.asc
+
+#for save in this editor use :wq
+
+
+#install mongodb
+sudo yum install -y mongodb-org
+
+#this thi to from  127.0.0.1 to 0.0.0.0
+sudo nano /etc/mongod.conf
+
+bindIp: 0.0.0.0
+
+Get EC2 public IP
+curl http://checkip.amazonaws.com
+
+so mongodb://<ec2-public-ip>:27017 for mondodb compass
+
+
+sudo systemctl start mongod
+sudo systemctl enable mongod
+sudo systemctl status mongod
+sudo systemctl restart mongod
+
+
+
+
+db.createUser({
+  user: "admin",
+  pwd: "admin",
+  roles: [{ role: "readWrite", db: "user_db" }]
+})
+
+mongodb://admin:admin@13.232.7.190:27017/user_db
+
+#pull from git in ec2
+sudo yum install git -y
+#cd funora_backend
+#git pull origin main
+
+
+#set .env file
+nano /home/ec2-user/funora_backend/.env
+#Step 2: Add variables
+PORT=3000
+MONGO_URI=mongodb://admin:admin@13.232.7.190:27017/user_db?authSource=admin
+
+#& save this
+
+
+# move to repositary for git pull, check file, folder
+cd /home/ec2-user/funora_backend
+git pull origin main
+
+pwd  # Get the current directory
+ls   # List files
+
+pm2 logs server
+
+# to check all file is present or not
+ls -la /home/ec2-user/funora_backend/src/config/
+
+
+$ run this command to add this file becoz it is mention in gitignore
+and paste json value and save it
+nano /home/ec2-user/funora_backend/src/config/serviceAccountKey.json
+
+
+//for aws we are using redis6
+
+to install redis we have to use ElastiCache
+add inbound rule to both redis secruity group as well as ec2 secruity group (most important step)
+IPv4
+Custom TCP
+TCP
+6379
+172.31.0.0/16
+
+to start redis server
+redis6-cli -h funora-redis-bvhl3j.serverless.eun1.cache.amazonaws.com -p 6379 --tls
+ping => pong
+
+
+// to use redis in local 
+//add .pem file first to ec2 and ubuntu on local
+nano my-key.pem
+
+//to give permission
+chmod 400 my-key.pem
+
+//Run the SSH tunnel command
+ssh -i my-key.pem -L 6379:funora-redis-bvhl3j.serverless.eun1.cache.amazonaws.com:6379 ec2-user@16.171.9.190
+
+or
+
+ssh -i funora-server.pem -L 6379:funora-redis-bvhl3j.serverless.eun1.cache.amazonaws.com:6379 ec2-user@16.171.9.190
+
+//create tunnel
+redis-cli -h 127.0.0.1 -p 6379 --tls
+
+
+
+
+
+
+
+
