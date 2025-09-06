@@ -5,22 +5,24 @@ const AttendeeSchema = new mongoose.Schema(
         eventId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Event",
-            required: true
+            required: true,
         },
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            unique: true  // Ensures a user can only set their attendance status once per event
         },
         status: {
             type: String,
             enum: ["going", "interested", "not going"],
-            required: true
+            required: true,
         },
         isActive: { type: Boolean, default: true },
     },
     { timestamps: true }
 );
+
+// ✅ This enforces uniqueness of the (eventId, userId) pair
+AttendeeSchema.index({ eventId: 1, userId: 1 }, { unique: true });
 
 module.exports = mongoose.model("Attendee", AttendeeSchema);

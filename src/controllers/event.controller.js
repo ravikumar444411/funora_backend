@@ -108,11 +108,14 @@ exports.getEventById = async (req, res) => {
         }
 
         // Count attendees marked as "going"
-        const goingCount = await Attendee.countDocuments({
+        const goingAttendees = await Attendee.find({
             eventId,
             status: "going",
             isActive: true
-        });
+        }).populate("userId", "profilePicture");
+
+        // goingCount
+        const goingCount = goingAttendees.length;
 
         // Format media
         const formattedMedia = event.media.map((url) => {
@@ -137,9 +140,11 @@ exports.getEventById = async (req, res) => {
             .populate("userId", "fullName profilePicture")
             .lean();
 
-        let currentUserComment = null;
+        let currentUserComment = [];
         const otherComments = [];
-        const profilesPics = [];
+        const profilesPics = [
+            ...new Set(goingAttendees.map(a => a.userId?.profilePicture).filter(Boolean))
+        ];
 
         feedbacks.filter(feedback => feedback.userId).forEach((feedback) => {
             const formattedFeedback = {
@@ -151,15 +156,15 @@ exports.getEventById = async (req, res) => {
             };
 
             if (userId && String(feedback.userId._id) === String(userId)) {
-                currentUserComment = formattedFeedback;
+                currentUserComment.push(formattedFeedback);
             } else if (otherComments.length < 4) {
                 otherComments.push(formattedFeedback);
-                profilesPics.push(feedback.userId.profilePicture);
+                // profilesPics.push(feedback.userId.profilePicture);
             }
         });
 
-        const topComments = currentUserComment
-            ? [currentUserComment, ...otherComments]
+        const topComments = currentUserComment.length > 0
+            ? [...currentUserComment, ...otherComments]
             : otherComments;
 
         // Format event response
