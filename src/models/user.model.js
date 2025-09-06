@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema(
             theme: { type: String, default: "light" },
             language: { type: String, default: "en" }
         },
-        fcmToken: { type: String, default: "" }
+        fcmToken: { type: String, default: "" },
+        login_pin: { type: String }
     },
     { timestamps: true }
 );

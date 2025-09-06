@@ -1,6 +1,8 @@
 const admin = require("../config/firebaseAdmin");
 const User = require("../models/user.model");
-const Notification = require('../models/notification.model'); // Import your Notification schema
+const Notification = require('../models/notification.model');
+const MasterNotification = require('../models/MasterNotification.model');
+const userNotificationQueue = require("../jobs/queues/userNotificationQueue");
 
 // Function to send push notifications
 async function sendPushNotification(userId, title, body) {
@@ -32,56 +34,110 @@ async function sendPushNotification(userId, title, body) {
     }
 }
 
-
-
-// Endpoint to send push notification
-exports.pushNotification = async (req, res) => {
+const pushNotificationHelper = async ({
+    userId,
+    title,
+    body,
+    data = {},
+    imageUrl = null,
+    deepLink = null,
+    type = "reminder",
+}) => {
     try {
-        const { userId, title, body, data, imageUrl, deepLink } = req.body;
+        console.log("🛠 Creating notification with data:", {
+            userId,
+            title,
+            body,
+            type,
+            imageUrl,
+            deepLink,
+            data,
+        });
 
-        // Validate input
-        if (!userId || !title || !body) {
-            return res.status(400).json({ error: "User ID, title, and body are required" });
-        }
-
-        // Create a notification entry in the database
+        // Step 1: Create the notification object
         const notification = new Notification({
             userId,
             title,
             body,
-            type: "reminder",
-            imageUrl: imageUrl || null,
-            deepLink: deepLink || null,
+            type,
+            imageUrl,
+            deepLink,
             status: "pending",
-            metadata: data || {},
+            metadata: data,
         });
 
+        console.log("📦 Saving notification to DB...");
         await notification.save();
 
-        // Attempt to send the push notification
+        // Step 2: Try sending push notification
+        console.log("📤 Attempting to send push notification...");
         const isSent = await sendPushNotification(userId, title, body, data, imageUrl, deepLink);
 
-        if (!isSent) {
-            notification.status = "failed";
-            await notification.save();
-            return res.status(500).json({ error: "Failed to send notification" });
+        // Step 3: Update status
+        notification.status = isSent ? "sent" : "failed";
+        if (isSent) {
+            notification.sentAt = new Date();
         }
 
-        // Update status to "sent" in DB
-        notification.status = "sent";
-        notification.sentAt = new Date();
+        console.log("📬 Updating notification status to:", notification.status);
         await notification.save();
 
-        res.json({ message: "Notification sent successfully", notification });
+        // Step 4: Return result
+        return {
+            success: isSent,
+            message: isSent ? "Notification sent successfully" : "Failed to send notification",
+            notification,
+        };
     } catch (error) {
-        console.error("Error handling push notification request:", error);
+        console.error("❌ Error in pushNotificationHelper:", error);
+        debugger; // Add debugger to pause if running in Node inspector
+        throw error;
+    }
+};
+
+
+// Endpoint to send push notification
+const pushNotification = async (req, res) => {
+    try {
+        console.log("📩 Incoming push notification request:", req.body);
+
+        const { userId, title, body, data, imageUrl, deepLink } = req.body;
+
+        // Input validation
+        if (!userId || !title || !body) {
+            console.warn("⚠️ Missing required fields");
+            return res.status(400).json({ error: "User ID, title, and body are required" });
+        }
+
+        // Call helper
+        const result = await pushNotificationHelper({
+            userId,
+            title,
+            body,
+            data,
+            imageUrl,
+            deepLink,
+        });
+
+        // Final response
+        if (!result.success) {
+            console.error("❌ Notification failed to send:", result.message);
+            return res.status(500).json({ error: result.message });
+        }
+
+        console.log("✅ Notification sent successfully");
+        res.json({ message: result.message, notification: result.notification });
+    } catch (error) {
+        console.error("❌ Error in pushNotification endpoint:", error);
+        debugger;
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
 
 
+
 // Endpoint to store FCM token
-exports.storeToken = async (req, res) => {
+const storeToken = async (req, res) => {
     try {
         const { userId, token } = req.body;
 
@@ -109,7 +165,7 @@ exports.storeToken = async (req, res) => {
 };
 
 // Get all notifications for a user
-exports.getUserNotifications = async (req, res) => {
+const getUserNotifications = async (req, res) => {
     try {
         const { userId } = req.body; // User ID from request parameters
         const { status, isRead, limit = 10, page = 1 } = req.body; // Filters and pagination
@@ -148,3 +204,48 @@ exports.getUserNotifications = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
+// create master notification
+const createMasterNotification = async ({
+    title,
+    message,
+    type = "event_create",
+    eventId,
+    imageUrl,
+    deepLink,
+    category,
+    metadata = {}
+}) => {
+    try {
+        const masterNotification = await MasterNotification.create({
+            title,
+            message,
+            type,
+            eventId,
+            imageUrl,
+            deepLink,
+            category,
+            metadata
+        });
+
+        console.log("✅ MasterNotification created:", masterNotification._id);
+
+        // Add a job to the queue (don't wait for completion)
+        await userNotificationQueue.add("distribute-to-users", {
+            masterNotificationId: masterNotification._id,
+        });
+        return masterNotification;
+    } catch (err) {
+        console.error("❌ Error creating master notification:", err);
+    }
+};
+
+module.exports = {
+    sendPushNotification,
+    pushNotificationHelper,
+    pushNotification,
+    storeToken,
+    getUserNotifications,
+    createMasterNotification
+};
+

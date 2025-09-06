@@ -470,13 +470,27 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
         console.log("Generated OTP:", otpCode);
 
 
-        if (process.env.NODE_ENV !== 'STAGING') {
+        if (true) {
             // Optional: Send SMS with OTP via Twilio
-            await client.messages.create({
-                body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
-                from: process.env.TWILIO_PHONE_NUMBER,
-                to: phone,
-            });
+            // await client.messages.create({
+            //     body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
+            //     from: process.env.TWILIO_PHONE_NUMBER,
+            //     to: phone,
+            // });
+
+            //send OTP with whatsapp via twillio
+            try {
+                const message = await client.messages.create({
+                    from: "whatsapp:+14155238886",
+                    to: `whatsapp:${phone}`,
+                    body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
+                });
+                console.log("WhatsApp Message SID:", message.sid, message);
+            } catch (err) {
+                console.error("Twilio WhatsApp Error:", err);
+            }
+
+
             resData.otpCode = otpCode
         } else {
             resData.otpCode = otpCode;
@@ -508,3 +522,140 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
     }
 };
 
+
+
+// Check if phone is registered
+exports.checkUser = async (req, res) => {
+    try {
+        const { phone } = req.body;
+        let resData = { phone };
+
+        // Validate input
+        if (!phone) {
+            return sendResponse(res, false, [], "Phone number required", 400);
+        }
+
+        // Check user
+        const user = await User.findOne({ phone });
+
+        if (!user) {
+            resData.isRegistered = false;
+            return sendResponse(res, true, resData, "User not registered", 200);
+        }
+
+        resData.isRegistered = true;
+        resData.user = {
+            id: user._id,
+            fullName: user.fullName,
+            phone: user.phone,
+            role: user.role,
+            status: user.status
+        };
+
+        return sendResponse(res, true, resData, "User already registered", 200);
+
+    } catch (error) {
+        console.error("Check user error:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
+exports.loginWithPin = async (req, res) => {
+    try {
+        const { phone, login_pin } = req.body;
+        let resData = { phone };
+
+        if (!phone || !login_pin) {
+            return sendResponse(res, false, [], "Phone and PIN are required", 400);
+        }
+
+        const user = await User.findOne({ phone });
+
+        if (!user) {
+            resData.isRegistered = false;
+            return sendResponse(res, false, resData, "User not registered", 404);
+        }
+
+        resData.isRegistered = true;
+
+        // Compare PIN (store hashed PIN in DB)
+        const isMatch = await bcrypt.compare(login_pin, user.login_pin);
+        if (!isMatch) {
+            return sendResponse(res, false, [], "Invalid PIN", 401);
+        }
+
+
+        resData.token = await generateToken(user); // generate JWT token
+
+        // Success
+        resData.user = {
+            id: user._id,
+            fullName: user.fullName,
+            phone: user.phone,
+            role: user.role,
+            status: user.status,
+        };
+
+        return sendResponse(res, true, resData, "Login successful with PIN", 200);
+
+    } catch (error) {
+        console.error("Login with PIN error:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
+exports.registerUserWithPin = async (req, res) => {
+    try {
+        const { phone, pin, confirm_pin } = req.body;
+        let resData = { phone };
+
+        if (!phone || !pin || !confirm_pin) {
+            return sendResponse(res, false, [], "Phone, PIN and Confirm PIN are required", 400);
+        }
+
+        if (pin !== confirm_pin) {
+            return sendResponse(res, false, [], "PIN and Confirm PIN do not match", 400);
+        }
+
+        // Check if user already exists
+        let user = await User.findOne({ phone });
+        if (user) {
+            return sendResponse(res, false, [], "User already registered", 400);
+        }
+
+        // Create new user
+        const defaultPassword = await bcrypt.hash("Funora@123", 10);
+        const hashedPin = await bcrypt.hash(pin, 10);
+
+        user = new User({
+            fullName: "Funora Explorer 🎉",
+            password: defaultPassword,
+            phone,
+            email: `user${Date.now()}@funora.app`,
+            dob: new Date("2000-01-01"),
+            signup: false,
+            createdAt: new Date(),
+            login_pin: hashedPin
+        });
+
+        await user.save();
+
+
+
+        resData.token = await generateToken(user); // generate JWT token
+
+        resData.user = {
+            id: user._id,
+            fullName: user.fullName,
+            phone: user.phone,
+            role: user.role,
+            status: user.status,
+        };
+
+        return sendResponse(res, true, resData, "User registered successfully", 201);
+
+    } catch (error) {
+        console.error("Register user error:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};

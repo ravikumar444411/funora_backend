@@ -11,5 +11,6 @@ const router = express.Router();
 router.post('/send', pushNotification);
 router.post('/store-token', storeToken);
 router.post('/fetch', getUserNotifications);
+router.post('/master', getUserNotifications);
 
 module.exports = router;

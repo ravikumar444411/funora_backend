@@ -7,6 +7,7 @@ const Attendee = require("../models/attendee.model");
 const EventFeedback = require("../models/event_feedback.model");
 const { formatEventResponse, sendResponse, formatPopularEventResponse, formatRecommendedEventResponse } = require("../utils/responseFormatter");
 const uploadToS3 = require("../utils/s3Upload");
+const { createMasterNotification } = require('./notification.controller');
 
 // 🔹 Create Event
 exports.createEvent = async (req, res) => {
@@ -45,6 +46,22 @@ exports.createEvent = async (req, res) => {
         });
 
         await newEvent.save();
+
+
+        // 🔄 Run in parallel (not blocking response)
+        createMasterNotification({
+            title: eventTitle,
+            message: eventDescription,
+            type: "event_create",
+            eventId: newEvent._id,
+            imageUrl: imageUrls[0] || null,
+            notifiCationCategory: "promo",
+            metadata: {
+                date: eventDateFrom,
+                venue: eventVenue
+            }
+        });
+
         return sendResponse(res, true, newEvent, "Event created successfully", 200);
     } catch (error) {
         console.log("Create Event Error:", error);
