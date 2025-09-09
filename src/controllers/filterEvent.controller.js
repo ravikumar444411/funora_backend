@@ -9,7 +9,7 @@ const moment = require('moment');
 exports.getFilteredEvents = async (req, res) => {
     try {
         const userId = req.body.userId;
-        let filters = { isActive: true }; // Only fetch active events
+        let filters = { isActive: true, eventDateTo: { $gte: new Date() } }; // Only fetch active events
 
         // 🔍 Keyword Search (Title & Description)
         if (req.body.search) {
@@ -78,15 +78,19 @@ exports.getFilteredEvents = async (req, res) => {
         //     filters.isOnline = req.body.type === "online";
         // }
 
-        // 🔽 Sorting (default: newest first)
-        let sortOptions = { eventDateFrom: -1 };
+        // 🔽 Sorting (default: newest first by eventDateFrom)
+        let sortOptions = { eventDateFrom: -1 }; // Default → Descending (latest first)
+
         if (req.body.sort === "oldest") {
-            sortOptions = { eventDateFrom: 1 };
+            sortOptions = { eventDateFrom: 1 };   // Ascending (oldest first)
+        } else if (req.body.sort === "latest") {
+            sortOptions = { eventDateFrom: -1 };  // Descending (latest first)
         } else if (req.body.sort === "priceAsc") {
             sortOptions = { ticketPrice: 1 };
         } else if (req.body.sort === "priceDesc") {
             sortOptions = { ticketPrice: -1 };
         }
+
 
         // 📜 Pagination
         const page = parseInt(req.body.page) || 1;

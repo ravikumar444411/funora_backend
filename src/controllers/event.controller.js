@@ -199,7 +199,7 @@ exports.updateEvent = async (req, res) => {
         const allowedFields = [
             "eventTitle", "eventDescription", "eventCategory", "eventDateFrom",
             "eventDateTo", "eventTimeFrom", "eventTimeTo", "eventDuration",
-            "eventVenue", "isPublic", "organizerId", "eventGuidance"
+            "eventVenue", "isPublic", "organizerId", "eventGuidance", "ticketPrice"
         ];
 
         allowedFields.forEach((field) => {
