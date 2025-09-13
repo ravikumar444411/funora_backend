@@ -262,6 +262,7 @@ exports.deleteEvent = async (req, res) => {
 // Events that have been shared the most (from SharedEvent).
 exports.getPopularEvents = async (req, res) => {
     try {
+        let filters = { isActive: true, eventDateTo: { $gte: new Date() } }; // Only fetch active events
         const userId = req.body.userId;
         // Aggregate like counts from FavoriteEvent
         const likeCounts = await FavoriteEvent.aggregate([
@@ -279,7 +280,7 @@ exports.getPopularEvents = async (req, res) => {
         const shareCountMap = new Map(shareCounts.map(({ _id, shareCount }) => [_id.toString(), shareCount]));
 
         // Fetch active events
-        let events = await Event.find({ isActive: true }); //.populate("eventCategory organizerId");
+        let events = await Event.find(filters); //.populate("eventCategory organizerId");
 
         const eventIds = events.map(event => event._id);
         // ⭐ Fetch favorites for this user
@@ -342,6 +343,7 @@ exports.getPopularEvents = async (req, res) => {
 // Events happening near the user’s location (Optional, if location is available).
 exports.getRecommendedEvents = async (req, res) => {
     try {
+        let filters = { isActive: true, eventDateTo: { $gte: new Date() } }; // Only fetch active events
         const { userId } = req.body; // Assuming user ID is available from authentication
         if (!userId) {
             return sendResponse(res, false, [], "User not authenticated", 401);
@@ -365,7 +367,7 @@ exports.getRecommendedEvents = async (req, res) => {
         const shareCountMap = new Map(shareCounts.map(({ _id, shareCount }) => [_id.toString(), shareCount]));
 
         // Fetch active events, prioritizing those in user's preferred categories
-        let query = { isActive: true };
+        let query = filters;
         if (preferredCategories.length) {
             query.eventCategory = { $in: preferredCategories };
         }

@@ -79,7 +79,7 @@ exports.getFilteredEvents = async (req, res) => {
         // }
 
         // 🔽 Sorting (default: newest first by eventDateFrom)
-        let sortOptions = { eventDateFrom: -1 }; // Default → Descending (latest first)
+        let sortOptions = { eventDateFrom: 1 }; // Default → Descending (latest first)
 
         if (req.body.sort === "oldest") {
             sortOptions = { eventDateFrom: 1 };   // Ascending (oldest first)

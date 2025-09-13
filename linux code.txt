@@ -128,6 +128,12 @@ ssh -i funora-server.pem -L 6379:funora-redis-bvhl3j.serverless.eun1.cache.amazo
 redis-cli -h 127.0.0.1 -p 6379 --tls
 
 
+//make bundle of app before upload
+flutter build appbundle --release --obfuscate --split-debug-info=/<project-path>/debug-info
+
+flutter build appbundle --release --obfuscate --split-debug-info=build/flutter/symbols
+
+
 
 
 
