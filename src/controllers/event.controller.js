@@ -270,6 +270,10 @@ exports.getPopularEvents = async (req, res) => {
             { $group: { _id: "$eventId", likeCount: { $sum: 1 } } }
         ]);
 
+        if (req.body.eventId) {
+            filters._id = { $ne: req.body.eventId }; // 👈 exclude this event
+        }
+
         // Aggregate share counts from SharedEvent
         const shareCounts = await SharedEvent.aggregate([
             { $group: { _id: "$eventId", shareCount: { $sum: 1 } } }
@@ -347,6 +351,10 @@ exports.getRecommendedEvents = async (req, res) => {
         const { userId } = req.body; // Assuming user ID is available from authentication
         if (!userId) {
             return sendResponse(res, false, [], "User not authenticated", 401);
+        }
+
+        if (req.body.eventId) {
+            filters._id = { $ne: req.body.eventId }; // 👈 exclude this event
         }
 
         // Fetch user's favorite categories or event interactions

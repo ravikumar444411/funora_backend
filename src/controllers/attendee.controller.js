@@ -4,28 +4,32 @@ const { formatAttendeeResponse, sendResponse } = require("../utils/responseForma
 // 🔹 Create or Update Attendee Status
 exports.createAttendee = async (req, res) => {
     try {
-        const { eventId, userId, status } = req.body;
+        const { eventId, userId } = req.body;
 
-        if (!eventId || !userId || !status) {
-            return sendResponse(res, false, [], "Event ID, User ID, and Status are required", 400);
+        if (!eventId || !userId) {
+            return sendResponse(res, false, [], "Event ID and User ID are required", 400);
         }
 
-        // Check if the user has already responded to this event
+        // Find existing attendee
         let attendee = await Attendee.findOne({ eventId, userId });
 
+        let newStatus = "interested"; // default if no record
+
         if (attendee) {
-            // Update existing status
-            attendee.status = status;
-            await attendee.save();
-            return sendResponse(res, true, attendee, "Attendance status updated successfully", 200);
-        } else {
-            // Create new attendance entry
-            const newAttendee = new Attendee({ eventId, userId, status });
-            await newAttendee.save();
-            return sendResponse(res, true, newAttendee, "Attendance status recorded successfully", 200);
+            // Toggle status
+            newStatus = attendee.status === "interested" ? "not going" : "interested";
         }
+
+        // Upsert with new status
+        attendee = await Attendee.findOneAndUpdate(
+            { eventId, userId },
+            { status: newStatus, isActive: true },
+            { new: true, upsert: true } // ✅ create if not exists, return updated
+        );
+
+        return sendResponse(res, true, attendee, "Attendance status updated successfully", 200);
     } catch (error) {
-        console.log("getting this Error:", error);
+        console.error("Error in createAttendee:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
