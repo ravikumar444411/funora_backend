@@ -7,27 +7,86 @@ const Attendee = require("../models/attendee.model");
 const EventFeedback = require("../models/event_feedback.model");
 const { formatEventResponse, sendResponse, formatPopularEventResponse, formatRecommendedEventResponse } = require("../utils/responseFormatter");
 const uploadToS3 = require("../utils/s3Upload");
+const sharp = require("sharp");
 const { createMasterNotification } = require('./notification.controller');
 
-// 🔹 Create Event
 exports.createEvent = async (req, res) => {
     try {
         const {
-            eventTitle, eventDescription, eventCategory, eventDateFrom, eventDateTo,
-            eventTimeFrom, eventTimeTo, eventDuration, eventVenue, isPublic, organizerId, eventGuidance
+            eventTitle,
+            eventDescription,
+            eventCategory,
+            eventDateFrom,
+            eventDateTo,
+            eventTimeFrom,
+            eventTimeTo,
+            eventDuration,
+            eventVenue,
+            isPublic,
+            organizerId,
+            eventGuidance,
         } = req.body;
 
         if (!organizerId) {
             return sendResponse(res, false, [], "Organizer ID is required", 400);
         }
 
-        // Upload media files to S3 (if any)
-        let imageUrls = [];
-        if (req.files && req.files.length > 0) {
-            imageUrls = await Promise.all(req.files.map(file => uploadToS3(file)));
+        let mainImageVariants = {};
+        let extraImages = [];
+
+        // ✅ Handle mainImage (single)
+        if (req.files && req.files.mainImage && req.files.mainImage[0]) {
+            const file = req.files.mainImage[0];
+
+            // Square
+            const squareBuffer = await sharp(file.buffer)
+                .resize(500, 500, { fit: "cover" })
+                .toBuffer();
+
+            // Rectangle
+            const rectBuffer = await sharp(file.buffer)
+                .resize(1280, 720, { fit: "cover" })
+                .toBuffer();
+
+            // Thumbnail
+            const thumbBuffer = await sharp(file.buffer)
+                .resize(200, 200, { fit: "cover" })
+                .toBuffer();
+
+            // Upload to S3
+            const squareUrl = await uploadToS3({
+                buffer: squareBuffer,
+                mimetype: file.mimetype,
+                originalname: `square_${file.originalname}`,
+            });
+
+            const rectUrl = await uploadToS3({
+                buffer: rectBuffer,
+                mimetype: file.mimetype,
+                originalname: `rect_${file.originalname}`,
+            });
+
+            const thumbUrl = await uploadToS3({
+                buffer: thumbBuffer,
+                mimetype: file.mimetype,
+                originalname: `thumb_${file.originalname}`,
+            });
+
+            mainImageVariants = {
+                square: squareUrl,
+                rectangle: rectUrl,
+                thumbnail: thumbUrl,
+            };
         }
 
-        // Create new event
+        // ✅ Handle extra images (media)
+        if (req.files && req.files.images && req.files.images.length > 0) {
+            extraImages = await Promise.all(
+                req.files.images.map((file) => uploadToS3(file))
+            );
+        }
+
+        // ✅ Save to DB
         const newEvent = new Event({
             eventTitle,
             eventDescription,
@@ -40,27 +99,13 @@ exports.createEvent = async (req, res) => {
             eventDuration,
             eventVenue,
             isPublic: isPublic === "true",
-            media: imageUrls,
-            organizerId, // ✅ Added Organizer ID
-            isActive: true
+            mainImage: mainImageVariants,
+            media: extraImages,
+            organizerId,
+            isActive: true,
         });
 
         await newEvent.save();
-
-
-        // 🔄 Run in parallel (not blocking response)
-        createMasterNotification({
-            title: eventTitle,
-            message: eventDescription,
-            type: "event_create",
-            eventId: newEvent._id,
-            imageUrl: imageUrls[0] || null,
-            notifiCationCategory: "promo",
-            metadata: {
-                date: eventDateFrom,
-                venue: eventVenue
-            }
-        });
 
         return sendResponse(res, true, newEvent, "Event created successfully", 200);
     } catch (error) {
@@ -68,6 +113,7 @@ exports.createEvent = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
 
 // 🔹 Get All Active Events
 exports.getEvents = async (req, res) => {
@@ -167,6 +213,14 @@ exports.getEventById = async (req, res) => {
             ? [...currentUserComment, ...otherComments]
             : otherComments;
 
+
+        const mainImage = {
+            square: event.mainImage?.square || "",
+            rectangle: event.mainImage?.rectangle || "",
+            thumbnail: event.mainImage?.thumbnail || ""
+        };
+
+
         // Format event response
         const formattedEvent = formatEventResponse(event);
         formattedEvent.categoryType = categoryType;
@@ -178,6 +232,7 @@ exports.getEventById = async (req, res) => {
         formattedEvent.goingCount = goingCount;
         formattedEvent.feedback = topComments;
         formattedEvent.profilePics = profilesPics;
+        formattedEvent.mainImage = mainImage;
 
         return sendResponse(res, true, formattedEvent, "Event details fetched successfully", 200);
     } catch (error) {

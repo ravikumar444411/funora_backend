@@ -25,17 +25,51 @@ const formatUserResponse = (user) => {
 
 
 const formatEventResponse = (event) => {
+    const parseTime = (timeStr, baseDate) => {
+        if (!timeStr) return null;
+
+        const parsed = Date.parse(timeStr);
+        if (!isNaN(parsed)) return new Date(parsed);
+
+        const match = timeStr.match(/(\d+):(\d+)\s?(AM|PM)?/i);
+        if (match) {
+            let hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            const isPM = match[3]?.toUpperCase() === "PM";
+            if (isPM && hours < 12) hours += 12;
+            if (!isPM && hours === 12) hours = 0;
+
+            const d = new Date(baseDate);
+            d.setHours(hours, minutes, 0, 0);
+            return d;
+        }
+
+        return null;
+    };
+
+    const eventDateFrom = event.eventDateFrom;
+    const eventDateTo = event.eventDateTo;
+
+    const baseFrom = new Date(eventDateFrom);
+    const baseTo = new Date(eventDateTo);
+
+    const timeFrom = parseTime(event?.eventTimeFrom, baseFrom)
+        ?? new Date(baseFrom.setHours(10, 0, 0, 0)); // Default 10:00 AM
+    const timeTo = parseTime(event?.eventTimeTo, baseTo)
+        ?? new Date(baseTo.setHours(18, 0, 0, 0)); // Default 6:00 PM
+
     return {
         _id: event?._id ?? null,
         eventTitle: event?.eventTitle ?? null,
         eventDescription: event?.eventDescription ?? null,
-        organizerId: event?.organizerId ?? null, // Added organizerId
-        eventDateFrom: event?.eventDateFrom ?? null,
-        eventDateTo: event?.eventDateTo ?? null,
-        eventTimeFrom: event?.eventTimeFrom ?? null,
-        eventTimeTo: event?.eventTimeTo ?? null,
-        eventDuration: event?.eventDuration ?? null,
-        eventVenue: event?.eventVenue ?? null,
+        organizerId: event?.organizerId ?? null,
+
+        eventDateFrom,
+        eventDateTo,
+        eventTimeFrom: timeFrom ? timeFrom.toISOString() : null,
+        eventTimeTo: timeTo ? timeTo.toISOString() : null,
+        eventDuration: getEventDuration(event),
+        eventVenue: event?.eventVenue ?? "",
         isPublic: event?.isPublic ?? true,
         media: event?.media ?? [],
         ticketPrice: event?.ticketPrice ?? 0,
@@ -43,6 +77,37 @@ const formatEventResponse = (event) => {
         eventGuidance: event?.eventGuidance ?? "",
     };
 };
+
+// Helper function
+function getEventDuration(event) {
+    // 1️⃣ Case: Explicit eventDuration field
+    if (event?.eventDuration && event.eventDuration > 0) {
+        return formatDuration(event.eventDuration);
+    }
+
+    // 2️⃣ Case: Derive from eventTimeFrom & eventTimeTo
+    if (event?.eventTimeFrom && event?.eventTimeTo) {
+        const from = new Date(event.eventTimeFrom);
+        const to = new Date(event.eventTimeTo);
+
+        if (!isNaN(from) && !isNaN(to) && to > from) {
+            const diffMinutes = Math.floor((to - from) / (1000 * 60));
+            return formatDuration(diffMinutes);
+        }
+    }
+
+    // 3️⃣ Fallback: No info
+    return "Flexible timing";
+}
+
+// Format helper: minutes → hours/mins
+function formatDuration(minutes) {
+    if (minutes < 60) {
+        return `${minutes} min${minutes > 1 ? "s" : ""}`;
+    }
+    const hours = Math.ceil(minutes / 60);
+    return `${hours} hr${hours > 1 ? "s" : ""}`;
+}
 
 const formatCategoryResponse = (category) => {
     return {

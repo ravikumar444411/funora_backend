@@ -11,7 +11,14 @@ router.post('/filter', getFilteredEvents);          // Get search & filter Event
 
 
 // Routes
-router.post("/create", upload.array("images"), createEvent);
+router.post("/create",
+    upload.fields([
+        { name: "mainImage", maxCount: 1 }, // single
+        { name: "images", maxCount: 10 },   // multiple
+    ]),
+    createEvent
+);
+
 router.post('/', createEvent);       // Create an Event
 router.get('/', getEvents);          // Get All Events
 router.post('/single_event', getEventById);    // Get Event by ID

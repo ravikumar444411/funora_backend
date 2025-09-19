@@ -202,6 +202,15 @@ exports.getFilteredEvents = async (req, res) => {
             const imageMedia = formattedMedia.find((media) => media.type === "image");
             const bannerUrl = imageMedia ? imageMedia.url : "";
 
+
+
+            const mainImage = {
+                square: event.mainImage?.square || "",
+                rectangle: event.mainImage?.rectangle || "",
+                thumbnail: event.mainImage?.thumbnail || ""
+            };
+
+
             return {
                 ...formatEventResponse(event),
                 categoryType: categoryMap[event.eventCategory.toString()] || "Unknown",
@@ -210,7 +219,8 @@ exports.getFilteredEvents = async (req, res) => {
                 bannerUrl: bannerUrl,
                 goingCount: counts.going,
                 interestedCount: counts.interested,
-                isFavorite: favoriteMap.has(eventIdStr)
+                isFavorite: favoriteMap.has(eventIdStr),
+                mainImage
             };
         });
 
