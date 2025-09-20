@@ -1,0 +1,14 @@
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.funora.app",
+            "sha256_cert_fingerprints": [
+                "77:39:87:78:20:BE:DF:B7:1B:45:88:A1:6C:5A:E5:2E:6E:03:B6:40:DB:BF:AB:8B:C9:73:EA:A6:B3:FF:A4:64"
+            ]
+        }
+    }
+]
