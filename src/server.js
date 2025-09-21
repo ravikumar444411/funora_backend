@@ -38,7 +38,3 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running new on http://localhost:${PORT}`);
 });
 
-
-// require("./jobs/notification_jobs/daily_jobs");
-// require("./jobs/consumer/favoriteEventProcessor");
-

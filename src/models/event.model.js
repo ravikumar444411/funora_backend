@@ -8,8 +8,8 @@ const eventSchema = new mongoose.Schema(
         organizerId: { type: mongoose.Schema.Types.ObjectId, ref: "Organizers", required: true },
         eventDateFrom: { type: Date, required: true },
         eventDateTo: { type: Date, required: true },
-        eventTimeFrom: { type: String },
-        eventTimeTo: { type: String },
+        eventTimeFrom: { type: String, match: /^([01]\d|2[0-3]):([0-5]\d)$/ }, // HH:mm
+        eventTimeTo: { type: String, match: /^([01]\d|2[0-3]):([0-5]\d)$/ },   // HH:mm
         eventDuration: { type: String },
         eventVenue: { type: String, required: true },
         isPublic: { type: Boolean, default: true },
