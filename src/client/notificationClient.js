@@ -2,7 +2,7 @@ const axios = require("axios");
 const Event = require('../models/event.model');
 require("../config/loadEnv");
 
-const JOB_SERVICE_BASE_URL = process.env.JOB_SERVICE_BASEURL_LOCAL;
+const JOB_SERVICE_BASE_URL = process.env.JOB_SERVICE_BASEURL;
 
 
 exports.sendNotification = async (useFor, eventId, userId, notificationText) => {
