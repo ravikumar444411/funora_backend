@@ -2,6 +2,8 @@ const { sendResponse, formatFavoriteEventResponse } = require("../utils/response
 const FavoriteEvent = require('../models/favorite_event.model');
 const Category = require("../models/category.model");
 const Attendee = require("../models/attendee.model");
+const { sendNotification } = require('../client/notificationClient');
+const AppConfig = require("../models/appConfig.model");
 
 //save & remove from favorite events
 exports.favoriteEventSave = async (req, res) => {
@@ -166,6 +168,12 @@ exports.remindMeEvents = async (req, res) => {
             existingFavorite.remindMe = !existingFavorite.remindMe;
             existingFavorite.updatedAt = new Date();
             await existingFavorite.save();
+            // 🔹 Trigger notification
+            const config = await AppConfig.findOne({ isActive: true });
+
+            if (config.enable_reminder_notification) {
+                sendNotification("REMINDER_NOTIFICATION", eventId, userId, null);
+            }
             return sendResponse(res, true, existingFavorite, "Remind me status toggled successfully", 200);
         }
 
@@ -182,6 +190,12 @@ exports.remindMeEvents = async (req, res) => {
         const favoriteEvent = new FavoriteEvent(favoriteData);
         await favoriteEvent.save();
 
+        // 🔹 Trigger notification
+        const config = await AppConfig.findOne({ isActive: true });
+
+        if (config.enable_reminder_notification) {
+            sendNotification("REMINDER_NOTIFICATION", eventId, userId, null);
+        }
         return sendResponse(res, true, favoriteEvent, "Event favorited successfully", 201);
     } catch (error) {
         console.log("Error favoriting event:", error);

@@ -80,9 +80,10 @@ exports.getUserById = async (req, res) => {
         }
 
         // Count total notifications for the user
-        const totalNotifications = await Notification.countDocuments({ userId });
+        const totalNotifications = await Notification.countDocuments({ userId,isRead:false });
 
-        const formattedUser = formatUserResponse(user);
+        const formattedUser = 
+        formatUserResponse(user);
 
         // Extract first name safely
         const fullName = user.fullName || '';

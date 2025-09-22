@@ -8,7 +8,8 @@ const EventFeedback = require("../models/event_feedback.model");
 const { formatEventResponse, sendResponse, formatPopularEventResponse, formatRecommendedEventResponse } = require("../utils/responseFormatter");
 const uploadToS3 = require("../utils/s3Upload");
 const sharp = require("sharp");
-const { createMasterNotification } = require('./notification.controller');
+const { sendNotification } = require('../client/notificationClient');
+const AppConfig = require("../models/appConfig.model");
 
 exports.createEvent = async (req, res) => {
     try {
@@ -106,6 +107,13 @@ exports.createEvent = async (req, res) => {
         });
 
         await newEvent.save();
+
+        // 🔹 Trigger notification
+        const config = await AppConfig.findOne({ isActive: true });
+        if (config.enable_reminder_notification) {
+            const notificationText = `🎉 Just announced: ‘${newEvent.eventTitle}’ is coming soon! Don’t miss out—check it out now!`
+            sendNotification("CREATE_EVENT_NOTIFICATION", newEvent._id.toString(), null, notificationText);
+        }
 
         return sendResponse(res, true, newEvent, "Event created successfully", 200);
     } catch (error) {
@@ -257,28 +265,76 @@ exports.updateEvent = async (req, res) => {
             "eventVenue", "isPublic", "organizerId", "eventGuidance", "ticketPrice"
         ];
 
-        allowedFields.forEach((field) => {
-            if (req.body[field] !== undefined) {
-                updateFields[field] = req.body[field];
-            }
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) updateFields[field] = req.body[field];
         });
 
-        // Handle isPublic conversion
         if (req.body.isPublic !== undefined) {
             updateFields.isPublic = req.body.isPublic === "true";
         }
 
-        // Upload new files if provided
+        // Upload files if provided
         if (req.files && req.files.length > 0) {
             const uploadedImages = await Promise.all(req.files.map(file => uploadToS3(file)));
             updateFields.media = uploadedImages;
         }
 
-        // Find and update the event
+        const existingEvent = await Event.findById(eventId);
+        if (!existingEvent) return sendResponse(res, false, [], "Event not found", 404);
+
+        // 🔹 Check important fields for notification
+        const fieldsToNotify = [
+            "eventDescription", "eventDateFrom", "eventDateTo",
+            "eventTimeFrom", "eventTimeTo", "eventVenue",
+            "eventGuidance", "ticketPrice"
+        ];
+
+        let hasImportantChange = false;
+        const messages = [];
+
+        fieldsToNotify.forEach(field => {
+            if (updateFields[field] !== undefined && updateFields[field] != existingEvent[field]) {
+                hasImportantChange = true;
+
+                // Generate engaging messages per field
+                switch (field) {
+                    case "eventDescription":
+                        messages.push(`Exciting updates to the event details!`);
+                        break;
+                    case "eventDateFrom":
+                    case "eventDateTo":
+                        messages.push(`Dates of "${existingEvent.eventTitle}" have been updated. Check the new schedule!`);
+                        break;
+                    case "eventTimeFrom":
+                    case "eventTimeTo":
+                        messages.push(`The event timing has changed. Don't miss it!`);
+                        break;
+                    case "eventVenue":
+                        messages.push(`Venue changed! Find "${existingEvent.eventTitle}" at the new location.`);
+                        break;
+                    case "eventGuidance":
+                        messages.push(`New visitor guidance added for "${existingEvent.eventTitle}".`);
+                        break;
+                    case "ticketPrice":
+                        messages.push(`Ticket price updated! Secure your spot now.`);
+                        break;
+                    default:
+                        messages.push(`${field} updated.`);
+                }
+            }
+        });
+
+        // Update the event
         const updatedEvent = await Event.findByIdAndUpdate(eventId, updateFields, { new: true });
 
-        if (!updatedEvent) {
-            return sendResponse(res, false, [], "Event not found", 404);
+        // 🔹 Trigger notification if important fields changed
+        if (hasImportantChange) {
+            const config = await AppConfig.findOne({ isActive: true });
+            if (config?.enable_event_update_notification) {
+                const notificationText = messages.join(" "); // Combine all messages
+                const userId = null; // Replace with logic to notify interested users
+                sendNotification("UPDATE_EVENT_NOTIFICATION", eventId, userId, notificationText);
+            }
         }
 
         return sendResponse(res, true, updatedEvent, "Event updated successfully", 200);
@@ -287,6 +343,7 @@ exports.updateEvent = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
 
 // 🔹 Delete Event (Soft Delete)
 exports.deleteEvent = async (req, res) => {
