@@ -2,7 +2,8 @@ const express = require('express');
 const {
     pushNotification,
     getUserNotifications,
-    markNotificationRead
+    markNotificationRead,
+    markAllAsRead
 } = require('../controllers/notification.controller');
 
 const router = express.Router();
@@ -11,6 +12,7 @@ const router = express.Router();
 router.post('/send', pushNotification);
 router.post('/fetch', getUserNotifications);
 router.post('/mark-read', markNotificationRead);
+router.post('/mark-all-Read', markAllAsRead);
 
 
 // router.post('/store-token', storeToken);

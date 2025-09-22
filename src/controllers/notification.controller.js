@@ -151,7 +151,7 @@ exports.markNotificationRead = async (req, res) => {
 
         // Update the notification directly
         const updatedNotification = await Notification.findByIdAndUpdate(
-            notificationId,
+            { _id: notificationId },
             { $set: { isRead: true, updatedAt: new Date() } },
             { new: true } // return the updated document
         );
@@ -168,6 +168,35 @@ exports.markNotificationRead = async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Error in markNotificationRead endpoint:", error);
+        res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+};
+
+
+// ✅ Mark Multiple Notifications as Read by IDs
+exports.markAllAsRead = async (req, res) => {
+    try {
+        const { notificationIds } = req.body; // expecting an array of IDs
+
+        if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+            console.warn("⚠️ Missing or invalid notificationIds in request");
+            return res.status(400).json({ error: "Notification IDs are required" });
+        }
+
+        // Update all notifications with given IDs
+        const result = await Notification.updateMany(
+            { _id: { $in: notificationIds }, isRead: false },
+            { $set: { isRead: true, updatedAt: new Date() } }
+        );
+
+        console.log(`✅ ${result.modifiedCount} notifications marked as read`);
+
+        res.json({
+            success: true,
+            message: `${result.modifiedCount} notifications marked as read`
+        });
+    } catch (error) {
+        console.error("❌ Error in markAllAsRead endpoint:", error);
         res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 };
