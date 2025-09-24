@@ -1,0 +1,299 @@
+{
+    "city": "Delhi NCR",
+    "locations": [
+        {
+            "name": "Connaught Place",
+            "coordinates": {
+                "lat": 28.6315,
+                "lng": 77.2167
+            }
+        },
+        {
+            "name": "India Gate",
+            "coordinates": {
+                "lat": 28.6129,
+                "lng": 77.2295
+            }
+        },
+        {
+            "name": "Janpath Market",
+            "coordinates": {
+                "lat": 28.6271,
+                "lng": 77.2167
+            }
+        },
+        {
+            "name": "Karol Bagh Market",
+            "coordinates": {
+                "lat": 28.6519,
+                "lng": 77.1900
+            }
+        },
+        {
+            "name": "Paharganj",
+            "coordinates": {
+                "lat": 28.6421,
+                "lng": 77.2190
+            }
+        },
+        {
+            "name": "Pragati Maidan",
+            "coordinates": {
+                "lat": 28.6186,
+                "lng": 77.2456
+            }
+        },
+        {
+            "name": "JLN Stadium",
+            "coordinates": {
+                "lat": 28.5810,
+                "lng": 77.2349
+            }
+        },
+        {
+            "name": "Hauz Khas Village",
+            "coordinates": {
+                "lat": 28.5535,
+                "lng": 77.1944
+            }
+        },
+        {
+            "name": "Qutub Minar",
+            "coordinates": {
+                "lat": 28.5244,
+                "lng": 77.1855
+            }
+        },
+        {
+            "name": "Lotus Temple",
+            "coordinates": {
+                "lat": 28.5535,
+                "lng": 77.2588
+            }
+        },
+        {
+            "name": "Select Citywalk Mall (Saket)",
+            "coordinates": {
+                "lat": 28.5286,
+                "lng": 77.2197
+            }
+        },
+        {
+            "name": "Sarojini Nagar Market",
+            "coordinates": {
+                "lat": 28.5755,
+                "lng": 77.1991
+            }
+        },
+        {
+            "name": "Lajpat Nagar Market",
+            "coordinates": {
+                "lat": 28.5672,
+                "lng": 77.2433
+            }
+        },
+        {
+            "name": "Greater Kailash (GK I & II)",
+            "coordinates": {
+                "lat": 28.5362,
+                "lng": 77.2380
+            }
+        },
+        {
+            "name": "Mehrauli",
+            "coordinates": {
+                "lat": 28.5236,
+                "lng": 77.1855
+            }
+        },
+        {
+            "name": "Red Fort (Lal Qila)",
+            "coordinates": {
+                "lat": 28.6562,
+                "lng": 77.2410
+            }
+        },
+        {
+            "name": "Chandni Chowk",
+            "coordinates": {
+                "lat": 28.6562,
+                "lng": 77.2300
+            }
+        },
+        {
+            "name": "Jama Masjid",
+            "coordinates": {
+                "lat": 28.6507,
+                "lng": 77.2334
+            }
+        },
+        {
+            "name": "Delhi University (North Campus)",
+            "coordinates": {
+                "lat": 28.6863,
+                "lng": 77.2100
+            }
+        },
+        {
+            "name": "Kamla Nagar Market",
+            "coordinates": {
+                "lat": 28.6810,
+                "lng": 77.2060
+            }
+        },
+        {
+            "name": "Majnu Ka Tila",
+            "coordinates": {
+                "lat": 28.7091,
+                "lng": 77.2239
+            }
+        },
+        {
+            "name": "Rajouri Garden",
+            "coordinates": {
+                "lat": 28.6430,
+                "lng": 77.1170
+            }
+        },
+        {
+            "name": "Pacific Mall (Tagore Garden)",
+            "coordinates": {
+                "lat": 28.6421,
+                "lng": 77.1107
+            }
+        },
+        {
+            "name": "Punjabi Bagh",
+            "coordinates": {
+                "lat": 28.6711,
+                "lng": 77.1373
+            }
+        },
+        {
+            "name": "Dwarka Sector 6 Market",
+            "coordinates": {
+                "lat": 28.5864,
+                "lng": 77.0444
+            }
+        },
+        {
+            "name": "Akshardham Temple",
+            "coordinates": {
+                "lat": 28.6127,
+                "lng": 77.2773
+            }
+        },
+        {
+            "name": "Yamuna Sports Complex",
+            "coordinates": {
+                "lat": 28.6700,
+                "lng": 77.3030
+            }
+        },
+        {
+            "name": "Preet Vihar",
+            "coordinates": {
+                "lat": 28.6510,
+                "lng": 77.3040
+            }
+        },
+        {
+            "name": "Laxmi Nagar",
+            "coordinates": {
+                "lat": 28.6270,
+                "lng": 77.2780
+            }
+        },
+        {
+            "name": "Noida Sector 18 (DLF Mall of India)",
+            "coordinates": {
+                "lat": 28.5672,
+                "lng": 77.3210
+            }
+        },
+        {
+            "name": "Worlds of Wonder (Noida)",
+            "coordinates": {
+                "lat": 28.5630,
+                "lng": 77.3260
+            }
+        },
+        {
+            "name": "Noida Sector 62 (IT Hub)",
+            "coordinates": {
+                "lat": 28.6289,
+                "lng": 77.3646
+            }
+        },
+        {
+            "name": "Cyber Hub",
+            "coordinates": {
+                "lat": 28.4955,
+                "lng": 77.0890
+            }
+        },
+        {
+            "name": "Ambience Mall (Gurugram)",
+            "coordinates": {
+                "lat": 28.5045,
+                "lng": 77.0960
+            }
+        },
+        {
+            "name": "Kingdom of Dreams",
+            "coordinates": {
+                "lat": 28.4694,
+                "lng": 77.0684
+            }
+        },
+        {
+            "name": "MG Road (Gurugram)",
+            "coordinates": {
+                "lat": 28.4800,
+                "lng": 77.0720
+            }
+        },
+        {
+            "name": "Shipra Mall",
+            "coordinates": {
+                "lat": 28.6420,
+                "lng": 77.3696
+            }
+        },
+        {
+            "name": "Kaushambi",
+            "coordinates": {
+                "lat": 28.6417,
+                "lng": 77.3189
+            }
+        },
+        {
+            "name": "Indirapuram Habitat Centre",
+            "coordinates": {
+                "lat": 28.6430,
+                "lng": 77.3730
+            }
+        },
+        {
+            "name": "Surajkund",
+            "coordinates": {
+                "lat": 28.4894,
+                "lng": 77.2604
+            }
+        },
+        {
+            "name": "Sector 15 Market (Faridabad)",
+            "coordinates": {
+                "lat": 28.4089,
+                "lng": 77.3167
+            }
+        },
+        {
+            "name": "Town Park (Faridabad)",
+            "coordinates": {
+                "lat": 28.4082,
+                "lng": 77.3065
+            }
+        }
+    ]
+}

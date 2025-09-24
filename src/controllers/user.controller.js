@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const Notification = require('../models/notification.model');
+const Location = require("../models/location.model");
 const { formatUserResponse, sendResponse } = require("../utils/responseFormatter");
 
 
@@ -79,11 +80,26 @@ exports.getUserById = async (req, res) => {
             return sendResponse(res, false, [], "User not found or inactive", 404);
         }
 
-        // Count total notifications for the user
-        const totalNotifications = await Notification.countDocuments({ userId,isRead:false });
+        let userLocation = await Location.findOne({ userId })
+            .select("type gpsLocation manualLocation -_id")
+            .lean();
 
-        const formattedUser = 
-        formatUserResponse(user);
+        // If no location is found, provide default empty structure
+        if (!userLocation) {
+            userLocation = {
+                type: "none",
+                manualLocation: {
+                    name: "",
+                    coordinates: { lat: null, lng: null },
+                },
+                gpsLocation: { lat: null, lng: null },
+            };
+        }
+
+        // Count total notifications for the user
+        const totalNotifications = await Notification.countDocuments({ userId, isRead: false });
+
+        const formattedUser = formatUserResponse(user);
 
         // Extract first name safely
         const fullName = user.fullName || '';
@@ -91,9 +107,10 @@ exports.getUserById = async (req, res) => {
 
         // Set placeholders
         const email = user.email && user.email.trim() !== '' ? user.email : 'user@example.com';
-        const profilePicture = user.profilePicture && user.profilePicture.trim() !== '' ? user.profilePicture : 'https://img.freepik.com/premium-vector/man-avatar-profile-picture-vector-illustration_268834-538.jpg';
+        const profilePicture = user.profilePicture && user.profilePicture.trim() !== ''
+            ? user.profilePicture
+            : 'https://img.freepik.com/premium-vector/man-avatar-profile-picture-vector-illustration_268834-538.jpg';
         const dob = user.dob ? user.dob : new Date('1990-01-01');
-        const location = user.location && user.location.trim() !== '' ? user.location : 'Not specified';
 
         const responseData = {
             ...formattedUser,
@@ -102,7 +119,7 @@ exports.getUserById = async (req, res) => {
             email,
             profilePicture,
             dob,
-            location
+            location: userLocation
         };
 
         return sendResponse(res, true, responseData, "User fetched successfully", 200);
@@ -111,10 +128,6 @@ exports.getUserById = async (req, res) => {
         return sendResponse(res, false, [], "Error fetching user", 500);
     }
 };
-
-
-
-
 
 // 🔹 PUT: Update User
 exports.updateUser = async (req, res) => {

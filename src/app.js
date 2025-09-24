@@ -15,6 +15,7 @@ const fileUploadRoutes = require("./routes/file_upload.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const jobsRoutes = require("./routes/jobs.routes");
 const appConfigRoutes = require("./routes/appConfig.routes");
+const locationRoutes = require("./routes/location.routes");
 
 
 require("dotenv").config();
@@ -39,6 +40,7 @@ app.use("/api/attendee", attendeeRoutes);
 app.use("/api/feedback", eventFeedbackRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/appConfig", appConfigRoutes);
+app.use("/api/location", locationRoutes);
 
 
 // to upload file
