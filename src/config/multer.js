@@ -13,11 +13,15 @@ const path = require("path");
 
 // File Filter for Images/Videos
 const fileFilter = (req, file, cb) => {
-    const allowedMimeTypes = ["image/jpeg", "image/png", "image/gif", "video/mp4"];
-    if (allowedMimeTypes.includes(file.mimetype)) {
+    const allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".mp4"];
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (allowedExtensions.includes(ext)) {
         cb(null, true);
     } else {
-        cb(new Error("Invalid file type"), false);
+        cb(null, false); // reject silently
+        // OR send custom error:
+        // cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", file.fieldname));
     }
 };
 
