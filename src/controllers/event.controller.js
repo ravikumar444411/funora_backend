@@ -26,6 +26,7 @@ exports.createEvent = async (req, res) => {
             isPublic,
             organizerId,
             eventGuidance,
+            ticketPrice
         } = req.body;
 
         if (!organizerId) {
@@ -103,6 +104,7 @@ exports.createEvent = async (req, res) => {
             mainImage: mainImageVariants,
             media: extraImages,
             organizerId,
+            ticketPrice,
             isActive: true,
         });
 

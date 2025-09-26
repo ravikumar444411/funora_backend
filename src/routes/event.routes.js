@@ -1,9 +1,10 @@
 const express = require('express');
 const { createEvent, getEvents, getEventById, updateEvent, deleteEvent, getPopularEvents, getRecommendedEvents } = require('../controllers/event.controller');
-
 const upload = require("../config/multer");
 const { getFilteredEvents } = require('../controllers/filterEvent.controller');
 const router = express.Router();
+const { createEventValidator } = require("../validators/eventValidator");
+const validateRequest = require("../middlewares/validateRequest");
 
 
 //filter & search
@@ -16,6 +17,8 @@ router.post("/create",
         { name: "mainImage", maxCount: 1 }, // single
         { name: "images", maxCount: 10 },   // multiple
     ]),
+    createEventValidator,
+    validateRequest,
     createEvent
 );
 

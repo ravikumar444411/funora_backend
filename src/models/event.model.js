@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const eventSchema = new mongoose.Schema(
     {
         eventTitle: { type: String, required: true },
-        eventDescription: { type: String },
+        eventDescription: { type: String, required: true },
         eventCategory: { type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true },
         organizerId: { type: mongoose.Schema.Types.ObjectId, ref: "Organizers", required: true },
         eventDateFrom: { type: Date, required: true },
@@ -24,7 +24,7 @@ const eventSchema = new mongoose.Schema(
         // 🔹 Extra images (media gallery)
         media: { type: [String] },
 
-        ticketPrice: { type: Number, default: 0 },
+        ticketPrice: { type: Number, default: 0, required: true },
         eventGuidance: { type: String },
         isActive: { type: Boolean, default: true },
     },
