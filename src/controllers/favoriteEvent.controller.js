@@ -162,43 +162,39 @@ exports.remindMeEvents = async (req, res) => {
             return sendResponse(res, false, [], "Event ID and User ID are required", 400);
         }
 
-        const existingFavorite = await FavoriteEvent.findOne({ eventId, userId });
+        // Find existing favorite event
+        let favoriteEvent = await FavoriteEvent.findOne({ eventId, userId });
 
-        if (existingFavorite) {
-            existingFavorite.remindMe = !existingFavorite.remindMe;
-            existingFavorite.updatedAt = new Date();
-            await existingFavorite.save();
-            // 🔹 Trigger notification
-            const config = await AppConfig.findOne({ isActive: true });
-
-            if (config.enable_reminder_notification) {
-                sendNotification("REMINDER_NOTIFICATION", eventId, userId, null);
-            }
-            return sendResponse(res, true, existingFavorite, "Remind me status toggled successfully", 200);
+        if (favoriteEvent) {
+            // Toggle remindMe
+            favoriteEvent.remindMe = !favoriteEvent.remindMe;
+            await favoriteEvent.save();
+        } else {
+            // Create new favorite event with remindMe = true
+            favoriteEvent = new FavoriteEvent({
+                eventId,
+                userId,
+                isFavorite: false,
+                remindMe: true,
+            });
+            await favoriteEvent.save();
         }
 
-        const favoriteData = {
-            eventId,
-            userId,
-            isFavorite: false,
-            remindMe: true,
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        };
-
-        const favoriteEvent = new FavoriteEvent(favoriteData);
-        await favoriteEvent.save();
-
-        // 🔹 Trigger notification
+        // 🔹 Trigger notification if remindMe is true
         const config = await AppConfig.findOne({ isActive: true });
-
-        if (config.enable_reminder_notification) {
+        if (config.enable_reminder_notification && favoriteEvent.remindMe) {
             sendNotification("REMINDER_NOTIFICATION", eventId, userId, null);
         }
-        return sendResponse(res, true, favoriteEvent, "Event favorited successfully", 201);
+
+        return sendResponse(
+            res,
+            true,
+            favoriteEvent,
+            "Remind me status updated successfully",
+            favoriteEvent.createdAt.getTime() === favoriteEvent.updatedAt.getTime() ? 201 : 200
+        );
     } catch (error) {
-        console.log("Error favoriting event:", error);
+        console.log("Error updating remind me status:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };

@@ -8,7 +8,7 @@ const router = express.Router();
 // save to favorite
 router.post('/save', customAuthMiddleware, favoriteEventSave);
 router.post('/fetch', getFavoriteEvents);
-router.post('/remind_me', remindMeEvents);
+router.post('/remind_me', customAuthMiddleware, remindMeEvents);
 
 
 module.exports = router;

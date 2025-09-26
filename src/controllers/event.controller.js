@@ -158,9 +158,11 @@ exports.getEventById = async (req, res) => {
 
         // Check if the event is marked as favorite by the user
         let isFavorite = false;
+        let remindMe = false;
         if (userId) {
             const favoriteRecord = await FavoriteEvent.findOne({ eventId: eventId, userId, isActive: true });
             isFavorite = favoriteRecord ? favoriteRecord.isFavorite : false;
+            remindMe = favoriteRecord ? favoriteRecord.remindMe : false;
         }
 
         // Count attendees marked as "going"
@@ -239,6 +241,7 @@ exports.getEventById = async (req, res) => {
         formattedEvent.bannerUrl = bannerUrl;
         formattedEvent.organizerId = organizer ? { ...organizer.toObject() } : null;
         formattedEvent.isFavorite = isFavorite;
+        formattedEvent.remindMe = remindMe;
         formattedEvent.goingCount = goingCount;
         formattedEvent.feedback = topComments;
         formattedEvent.profilePics = profilesPics;
