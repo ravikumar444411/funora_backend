@@ -1,4 +1,6 @@
 const Notification = require('../models/notification.model');
+const admin = require("../config/firebaseAdmin");
+const User = require("../models/user.model");
 
 const pushNotificationHelper = async ({
     userId,
@@ -201,4 +203,68 @@ exports.markAllAsRead = async (req, res) => {
     }
 };
 
+// Endpoint to store FCM token
+exports.storeToken = async (req, res) => {
+    try {
+        const { userId, token } = req.body;
 
+        // Validate input
+        if (!userId || !token) {
+            return res.status(400).json({ error: "User ID and token are required" });
+        }
+
+        // Find the user
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Update the FCM token
+        user.fcmToken = token;
+        await user.save();
+
+        res.json({ message: "FCM token stored successfully" });
+    } catch (error) {
+        console.error("Error storing token:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+
+// Function to send push notifications
+exports.fcmPushNotification = async (req, res) => {
+    try {
+        const { userId, title, body } = req.body;
+        const user = await User.findById(userId);
+
+        if (!user || !user.fcmToken) {
+            console.log("No FCM token found for user:", userId);
+            return res.status(404).json({ success: false, message: "No FCM token" });
+        }
+
+        // Ensure body is string for notification
+        const bodyString = typeof body === "string" ? body : JSON.stringify(body);
+
+        const message = {
+            notification: {
+                title: title,
+                body: bodyString, // 🔥 must always be string
+            },
+            data: {
+                payload: bodyString, // 🔥 custom JSON payload
+            },
+            token: user.fcmToken,
+        };
+
+        await admin.messaging().send(message);
+
+        res.json({
+            success: true,
+            message: `Notification sent successfully to user ${userId}`,
+        });
+    } catch (error) {
+        console.error("Error sending notification:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};

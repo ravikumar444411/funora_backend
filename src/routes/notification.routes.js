@@ -3,7 +3,9 @@ const {
     pushNotification,
     getUserNotifications,
     markNotificationRead,
-    markAllAsRead
+    markAllAsRead,
+    fcmPushNotification,
+    storeToken
 } = require('../controllers/notification.controller');
 
 const router = express.Router();
@@ -14,8 +16,9 @@ router.post('/fetch', getUserNotifications);
 router.post('/mark-read', markNotificationRead);
 router.post('/mark-all-Read', markAllAsRead);
 
-
-// router.post('/store-token', storeToken);
+//firebase push notificaton
+router.post('/store-token', storeToken);
+router.post('/fcm', fcmPushNotification);
 // router.post('/master', getUserNotifications);
 
 module.exports = router;
