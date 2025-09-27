@@ -10,6 +10,8 @@ const uploadToS3 = require("../utils/s3Upload");
 const sharp = require("sharp");
 const { sendNotification } = require('../client/notificationClient');
 const AppConfig = require("../models/appConfig.model");
+const EventSuggestion = require("../models/event_suggestion.model");
+
 
 exports.createEvent = async (req, res) => {
     try {
@@ -165,6 +167,11 @@ exports.getEventById = async (req, res) => {
             remindMe = favoriteRecord ? favoriteRecord.remindMe : false;
         }
 
+        let rateToEvent = false;
+        const existingRating = await EventSuggestion.findOne({ eventId, userId });
+        if (existingRating) {
+            rateToEvent = true;
+        }
         // Count attendees marked as "going"
         const goingAttendees = await Attendee.find({
             eventId,
@@ -242,6 +249,7 @@ exports.getEventById = async (req, res) => {
         formattedEvent.organizerId = organizer ? { ...organizer.toObject() } : null;
         formattedEvent.isFavorite = isFavorite;
         formattedEvent.remindMe = remindMe;
+        formattedEvent.rateToEvent = rateToEvent;
         formattedEvent.goingCount = goingCount;
         formattedEvent.feedback = topComments;
         formattedEvent.profilePics = profilesPics;

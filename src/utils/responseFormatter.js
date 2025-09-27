@@ -75,6 +75,7 @@ const formatEventResponse = (event) => {
         ticketPrice: event?.ticketPrice ?? 0,
         isOnline: event?.isOnline ?? false,
         eventGuidance: event?.eventGuidance ?? "",
+        eventRating: event?.rating?.average ?? 0
     };
 };
 

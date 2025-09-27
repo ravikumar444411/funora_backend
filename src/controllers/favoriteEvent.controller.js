@@ -1,9 +1,11 @@
 const { sendResponse, formatFavoriteEventResponse } = require("../utils/responseFormatter");
 const FavoriteEvent = require('../models/favorite_event.model');
+const Event = require('../models/event.model');
 const Category = require("../models/category.model");
 const Attendee = require("../models/attendee.model");
 const { sendNotification } = require('../client/notificationClient');
 const AppConfig = require("../models/appConfig.model");
+const EventSuggestion = require("../models/event_suggestion.model");
 
 //save & remove from favorite events
 exports.favoriteEventSave = async (req, res) => {
@@ -198,4 +200,130 @@ exports.remindMeEvents = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
+//rating to event
+exports.rateEvent = async (req, res) => {
+    try {
+        const { eventId, userId, rating, suggestion } = req.body;
+
+        if (!eventId || !userId || !rating) {
+            return sendResponse(res, false, [], "Event ID, User ID, and rating are required", 400);
+        }
+
+        if (rating < 1 || rating > 5) {
+            return sendResponse(res, false, [], "Rating must be between 1 and 5", 400);
+        }
+
+        // Ensure user has "interested" status before rating
+        const attendee = await Attendee.findOne({ eventId, userId });
+        if (!attendee || attendee.status !== "interested") {
+            return sendResponse(res, false, [], "User must be interested in this event before rating", 400);
+        }
+
+        // 🔹 Fetch the event
+        const event = await Event.findOne({ _id: eventId, isActive: true });
+        if (!event) {
+            return sendResponse(res, false, [], "Event not found", 404);
+        }
+
+        // 🔹 Check if user has already rated this event
+        let existingRating = await EventSuggestion.findOne({ eventId, userId });
+
+        if (existingRating) {
+            // Update total rating: subtract old rating and add new rating
+            const totalRating = event.rating.average * event.rating.count - existingRating.rating + rating;
+            event.rating.average = totalRating / event.rating.count;
+
+            // Update suggestion + rating
+            existingRating.rating = rating;
+            if (suggestion && suggestion.trim() !== "") {
+                existingRating.suggestion = suggestion.trim();
+            }
+
+            await existingRating.save();
+        } else {
+            // New rating
+            const totalRating = event.rating.average * event.rating.count + rating;
+            event.rating.count += 1;
+            event.rating.average = totalRating / event.rating.count;
+
+            const newRating = new EventSuggestion({
+                eventId,
+                userId,
+                rating,
+                suggestion: suggestion ? suggestion.trim() : "",
+            });
+            await newRating.save();
+        }
+
+        await event.save();
+
+        return sendResponse(
+            res,
+            true,
+            { rating: event.rating },
+            "Event rated successfully",
+            200
+        );
+    } catch (error) {
+        console.error("Error rating event:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
+
+exports.checkEventRating = async (req, res) => {
+    try {
+        const { eventId, userId } = req.body;
+
+        if (!eventId || !userId) {
+            return sendResponse(res, false, [], "Event ID and User ID are required", 400);
+        }
+
+        // Ensure user has "interested" status before rating
+        const attendee = await Attendee.findOne({ eventId, userId });
+        if (!attendee || attendee.status !== "interested") {
+            return sendResponse(
+                res,
+                true,
+                {
+                    isEligible: false,
+                    rated: false,
+                },
+                "User has already rated this event",
+                200
+            );
+        }
+
+        const existingRating = await EventSuggestion.findOne({ eventId, userId });
+
+        if (existingRating) {
+            return sendResponse(
+                res,
+                true,
+                {
+                    isEligible: true,
+                    rated: true,
+                    rating: existingRating.rating,
+                    suggestion: existingRating.suggestion || null,
+                },
+                "User has already rated this event",
+                200
+            );
+        } else {
+            return sendResponse(
+                res,
+                true,
+                { isEligible: true, rated: false },
+                "User has not rated this event yet",
+                200
+            );
+        }
+    } catch (error) {
+        console.error("Error checking event rating:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
+
 
