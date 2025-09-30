@@ -144,7 +144,7 @@ exports.initiateBooking = async (req, res) => {
         return sendResponse(
             res,
             true,
-            { bookingCode: newBooking.bookingCode, bookingData: newBooking },
+            { bookingCode: newBooking.bookingCode, bookingId: newBooking._id, subtotal: subtotal, totalAmount: totalAmount },
             "Booking created successfully",
             201
         );
@@ -159,10 +159,10 @@ exports.initiateBooking = async (req, res) => {
 //after payment book ticket
 exports.finalizeBooking = async (req, res) => {
     try {
-        const { bookingId } = req.body;
+        const { bookingId, razorpay_payment_id } = req.body;
 
-        if (!bookingId) {
-            return sendResponse(res, false, [], "Booking code is required", 400);
+        if (!bookingId || !razorpay_payment_id) {
+            return sendResponse(res, false, [], "Booking code and razorpay_payment_id is required", 400);
         }
 
         const booking = await Booking.findOne({ _id: bookingId });
@@ -192,6 +192,7 @@ exports.finalizeBooking = async (req, res) => {
         // Update booking
         booking.qrCodeUrl = qrCodeUrl;
         booking.status = "confirmed";
+        booking.razorpay_payment_id = razorpay_payment_id;
         await booking.save();
 
         return sendResponse(res, true, { bookingId }, "Booking finalized successfully", 200);
@@ -217,7 +218,7 @@ exports.confirmBookedSummary = async (req, res) => {
             .populate("userId");
 
         if (!booking) {
-            return sendResponse(res, false, [], "Booking not found", 404);
+            return sendResponse(res, false, [], "Booking not found or already book", 404);
         }
 
         const event = booking.eventId;
@@ -244,6 +245,7 @@ exports.confirmBookedSummary = async (req, res) => {
             bookingDate: booking.bookingDate || booking.createdAt,
             ticketQuantity: booking.tickets.quantity,
             qrCodeUrl: booking.qrCodeUrl || null,
+            razorpay_payment_id: booking.razorpay_payment_id || null,
             pricePerTicket: booking.tickets.pricePerTicket,
             totalAmount: booking.totalAmount,
             eventId: event._id,
