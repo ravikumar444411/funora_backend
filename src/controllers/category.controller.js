@@ -1,7 +1,7 @@
 const Category = require("../models/category.model");
 const Event = require('../models/event.model');
 const { sendResponse, formatCategoryResponse } = require("../utils/responseFormatter");
-const uploadToS3 = require("../utils/s3Upload");
+const { uploadToS3 } = require("../utils/s3Upload");
 
 // Create Category
 exports.createCategory = async (req, res) => {

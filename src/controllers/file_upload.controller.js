@@ -1,5 +1,5 @@
 const { sendResponse } = require("../utils/responseFormatter");
-const uploadToS3 = require("../utils/s3Upload");
+const { uploadToS3 } = require("../utils/s3Upload");
 
 exports.uploadFile = async (req, res) => {
     try {

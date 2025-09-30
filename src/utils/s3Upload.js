@@ -3,7 +3,7 @@ const { Upload } = require("@aws-sdk/lib-storage");
 require("dotenv").config();
 const s3 = require("../config/s3");
 
-const uploadToS3 = async (file) => {
+exports.uploadToS3 = async (file) => {
     const fileKey = `events/${Date.now()}_${file.originalname}`;
     const params = {
         Bucket: process.env.AWS_BUCKET_NAME,
@@ -26,4 +26,19 @@ const uploadToS3 = async (file) => {
     }
 };
 
-module.exports = uploadToS3;
+exports.uploadQrToS3 = async (fileBuffer, fileKey, contentType = "application/octet-stream") => {
+    const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: fileKey,
+        Body: fileBuffer,
+        ContentType: contentType,
+    };
+
+    const upload = new Upload({
+        client: s3,
+        params,
+    });
+    await upload.done();
+
+    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+};

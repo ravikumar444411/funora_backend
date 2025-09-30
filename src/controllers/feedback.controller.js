@@ -1,7 +1,7 @@
 // feedbackController.js
 const Feedback = require("../models/feedback.model");
 const { sendResponse } = require("../utils/responseFormatter");
-const uploadToS3 = require("../utils/s3Upload"); // your S3 upload helper
+const { uploadToS3 } = require("../utils/s3Upload"); // your S3 upload helper
 
 exports.submitFeedback = async (req, res) => {
     try {
