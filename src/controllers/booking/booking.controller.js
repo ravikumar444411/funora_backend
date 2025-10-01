@@ -159,9 +159,9 @@ exports.initiateBooking = async (req, res) => {
 //after payment book ticket
 exports.finalizeBooking = async (req, res) => {
     try {
-        const { bookingId, razorpay_payment_id } = req.body;
+        const { bookingId, razorpay_payment_id, razorpay_payment_order_id } = req.body;
 
-        if (!bookingId || !razorpay_payment_id) {
+        if (!bookingId || !razorpay_payment_id || !razorpay_payment_order_id) {
             return sendResponse(res, false, [], "Booking code and razorpay_payment_id is required", 400);
         }
 
@@ -193,6 +193,7 @@ exports.finalizeBooking = async (req, res) => {
         booking.qrCodeUrl = qrCodeUrl;
         booking.status = "confirmed";
         booking.razorpay_payment_id = razorpay_payment_id;
+        booking.razorpay_payment_order_id = razorpay_payment_order_id;
         await booking.save();
 
         return sendResponse(res, true, { bookingId }, "Booking finalized successfully", 200);
