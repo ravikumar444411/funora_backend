@@ -13,6 +13,9 @@ pm2 stop my-app
 pm2 restart my-app
 pm2 delete my-app
 
+//after setup ecosytem file
+pm2 start ecosystem.config.js --env staging
+
 
 # move to root
 sudo su - root
@@ -128,15 +131,114 @@ ssh -i funora-server.pem -L 6379:funora-redis-bvhl3j.serverless.eun1.cache.amazo
 redis-cli -h 127.0.0.1 -p 6379 --tls
 
 
-//make bundle of app before upload
-flutter build appbundle --release --obfuscate --split-debug-info=/<project-path>/debug-info
-
-flutter build appbundle --release --obfuscate --split-debug-info=build/flutter/symbols
+Project Console: https://console.firebase.google.com/project/funora-4d19f/overview
+Hosting URL: https://funora-4d19f.web.app
 
 
 
+#step to use funora job in ec2
+#create ec2 instalce for aws linux
+sudo dnf update -y
+
+sudo dnf install -y docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+docker --version
+
+#Add your user to the Docker group
+sudo usermod -aG docker ec2-user
+
+exit
+ssh -i your-key.pem ec2-user@<your-ec2-public-ip>
+#refresh ec2 page 
+
+docker run -d --name redis -p 6379:6379 redis:7
+docker ps
+
+#Remove the existing container
+docker rm -f redis
+
+#Then you can rerun your Redis container:
+docker run -d \
+  --name redis \
+  -p 6379:6379 \
+  -v ~/redis-data:/data \
+  redis:7 \
+  redis-server --appendonly yes --bind 0.0.0.0
+
+#0.0.0.0 for expose to local
+
+
+#setup redis in contain recomanded
+docker run -d --name redis \
+  -p 6379:6379 \
+  redis redis-server --requirepass "YourStrongPassword"
+
+#check redis connection
+redis-cli -h 16.171.149.165 -p 6379 -a YourStrongPassword
+
+#to access server  base url need to setup tcp
+#AWS Console → EC2 → Your Instance → Security → Inbound Rules.
+Custom TCP 4000  0.0.0.0/0
+
+
+#Check running containers
+docker ps -a
+
+#start redis
+docker start redis
+
+#Use redis-cli inside the Docker container
+#check redis is working or not it give=> pong
+docker exec -it redis redis-cli ping
+
+
+sudo dnf install git -y
+git --version
+
+git clone https://github.com/ravikumar444411/funora_job.git funora_job
+cd funora_job
+
+#install node js
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.nvm/nvm.sh
+nvm install --lts
+nvm use --lts
+
+#now do 
+npm install
+npm install -g pm2
+
+#create file like env, google-service.json with nano
+pm2 start npm --name funora-job -- run start:prod
+pm2 save
+
+#go to repo location
+cd /funora_job/funora_job
+
+#to access server  base url need to setup tcp
+#AWS Console → EC2 → Your Instance → Security → Inbound Rules.
+Custom TCP 4000  0.0.0.0/0
 
 
 
 
+Install cloudflared manually on Amazon Linux (EC2)
+# Go to your home directory
+cd ~
 
+# Download the latest release (Linux x86_64)
+wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+
+# Make it executable
+chmod +x cloudflared-linux-amd64
+
+# Move to /usr/local/bin so it’s globally available
+sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
+
+# Verify installation
+cloudflared --version
+
+# run from the same account that runs your app (ec2-user)
+cloudflared tunnel --url http://localhost:3000

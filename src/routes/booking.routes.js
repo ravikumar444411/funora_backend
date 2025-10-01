@@ -12,6 +12,7 @@ const {
 const {
     createOrder,
     verifyPayment,
+    webhookApi
 } = require('../controllers/booking/razorpay.controller');
 
 const router = express.Router();
@@ -31,5 +32,7 @@ router.post('/confirm_booked_summary', confirmBookedSummary); //step 4
 //razorpay intigration
 router.post('/create-order', createOrder); //step 4
 router.post('/verify-payment', verifyPayment); //step 4
+router.post('/webhook', express.raw({ type: "application/json" }), webhookApi); //step 4
+
 
 module.exports = router;
