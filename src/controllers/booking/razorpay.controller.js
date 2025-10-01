@@ -56,6 +56,7 @@ exports.verifyPayment = async (req, res) => {
 
 exports.webhookApi = async (req, res) => {
     try {
+        console.log("✅ Webhook hit! Raw body:", req.body.toString());
         const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
         const signature = req.headers["x-razorpay-signature"];
