@@ -48,7 +48,7 @@ exports.getBookingSummary = async (req, res) => {
         });
 
         const totalCharges = Object.values(chargesAmount).reduce((a, b) => a + b, 0);
-        const totalAmount = subtotal + totalCharges;
+        const totalAmount = subtotal > 0 ? subtotal + totalCharges : subtotal;
 
         // Prepare response
         const bookingSummary = {
@@ -161,8 +161,8 @@ exports.finalizeBooking = async (req, res) => {
     try {
         const { bookingId, razorpay_payment_id, razorpay_payment_order_id } = req.body;
 
-        if (!bookingId || !razorpay_payment_id || !razorpay_payment_order_id) {
-            return sendResponse(res, false, [], "Booking code and razorpay_payment_id is required", 400);
+        if (!bookingId) {
+            return sendResponse(res, false, [], "Booking id is required", 400);
         }
 
         const booking = await Booking.findOne({ _id: bookingId });
@@ -192,8 +192,8 @@ exports.finalizeBooking = async (req, res) => {
         // Update booking
         booking.qrCodeUrl = qrCodeUrl;
         booking.status = "confirmed";
-        booking.razorpay_payment_id = razorpay_payment_id;
-        booking.razorpay_payment_order_id = razorpay_payment_order_id;
+        booking.razorpay_payment_id = razorpay_payment_id ? razorpay_payment_id : null;
+        booking.razorpay_payment_order_id = razorpay_payment_order_id ? razorpay_payment_order_id : null;
         await booking.save();
 
         return sendResponse(res, true, { bookingId }, "Booking finalized successfully", 200);
