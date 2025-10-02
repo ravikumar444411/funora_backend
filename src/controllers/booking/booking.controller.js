@@ -269,3 +269,75 @@ exports.confirmBookedSummary = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
+// Get All Booked Events of a User
+exports.getMyBookings = async (req, res) => {
+    try {
+        const { userId } = req.body; // or from req.user if JWT auth is used
+
+        if (!userId) {
+            return sendResponse(res, false, [], "User ID is required", 400);
+        }
+
+        // Fetch all confirmed bookings of the user
+        const bookings = await Booking.find({ userId, status: { $in: ["pending", "confirmed", "cancelled"] } })
+            .populate("eventId")
+            .populate("userId")
+            .sort({ createdAt: -1 }); // latest first
+
+        if (!bookings.length) {
+            return sendResponse(res, true, [], "No bookings found", 200);
+        }
+
+        // Format booking list
+        const formattedBookings = bookings.map((booking) => {
+            const event = booking.eventId;
+            const user = booking.userId;
+
+            // Format event media
+            const formattedMedia = event.media.map((url) => {
+                const extension = url.split('.').pop().toLowerCase();
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+                    return { type: "image", url };
+                } else if (['mp4', 'mov', 'avi', 'mkv'].includes(extension)) {
+                    return { type: "video", url };
+                }
+                return { type: "unknown", url };
+            });
+
+            const imageMedia = formattedMedia.find((media) => media.type === "image");
+            const bannerUrl = imageMedia ? imageMedia.url : "";
+
+            return {
+                bookingId: booking._id,
+                bookingCode: booking.bookingCode,
+                bookingStatus: booking.status,
+                bookingDate: booking.bookingDate || booking.createdAt,
+                ticketQuantity: booking.tickets.quantity,
+                qrCodeUrl: booking.qrCodeUrl || null,
+                razorpay_payment_id: booking.razorpay_payment_id || null,
+                pricePerTicket: booking.tickets.pricePerTicket,
+                totalAmount: booking.totalAmount,
+
+                eventId: event._id,
+                eventName: event.eventTitle,
+                eventDateFrom: event.eventDateFrom,
+                eventDateTo: event.eventDateTo,
+                eventTimeFrom: event.eventTimeFrom,
+                eventTimeTo: event.eventTimeTo,
+                eventVenue: event.eventVenue,
+                bannerUrl: bannerUrl,
+
+                userId: user._id,
+                userFullname: user.fullName,
+                userEmail: user.email,
+                userPhone: user.phone
+            };
+        });
+
+        return sendResponse(res, true, formattedBookings, "Bookings fetched successfully", 200);
+    } catch (error) {
+        console.log("Get My Bookings Error:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
