@@ -286,10 +286,62 @@ exports.updateEvent = async (req, res) => {
             updateFields.isPublic = req.body.isPublic === "true";
         }
 
-        // Upload files if provided
-        if (req.files && req.files.length > 0) {
-            const uploadedImages = await Promise.all(req.files.map(file => uploadToS3(file)));
-            updateFields.media = uploadedImages;
+        let mainImageVariants = null;
+        let extraImages = [];
+
+        // ✅ Handle mainImage (replace if provided)
+        if (req.files && req.files.mainImage && req.files.mainImage[0]) {
+            const file = req.files.mainImage[0];
+
+            // Square
+            const squareBuffer = await sharp(file.buffer)
+                .resize(500, 500, { fit: "cover" })
+                .toBuffer();
+
+            // Rectangle
+            const rectBuffer = await sharp(file.buffer)
+                .resize(1280, 720, { fit: "cover" })
+                .toBuffer();
+
+            // Thumbnail
+            const thumbBuffer = await sharp(file.buffer)
+                .resize(200, 200, { fit: "cover" })
+                .toBuffer();
+
+            // Upload to S3
+            const squareUrl = await uploadToS3({
+                buffer: squareBuffer,
+                mimetype: file.mimetype,
+                originalname: `square_${file.originalname}`,
+            });
+
+            const rectUrl = await uploadToS3({
+                buffer: rectBuffer,
+                mimetype: file.mimetype,
+                originalname: `rect_${file.originalname}`,
+            });
+
+            const thumbUrl = await uploadToS3({
+                buffer: thumbBuffer,
+                mimetype: file.mimetype,
+                originalname: `thumb_${file.originalname}`,
+            });
+
+            mainImageVariants = {
+                square: squareUrl,
+                rectangle: rectUrl,
+                thumbnail: thumbUrl,
+            };
+
+            updateFields.mainImage = mainImageVariants;
+        }
+
+        // ✅ Handle extra images (replace if provided)
+        if (req.files && req.files.images && req.files.images.length > 0) {
+            extraImages = await Promise.all(
+                req.files.images.map((file) => uploadToS3(file))
+            );
+            updateFields.media = extraImages;
         }
 
         const existingEvent = await Event.findById(eventId);
@@ -309,7 +361,6 @@ exports.updateEvent = async (req, res) => {
             if (updateFields[field] !== undefined && updateFields[field] != existingEvent[field]) {
                 hasImportantChange = true;
 
-                // Generate engaging messages per field
                 switch (field) {
                     case "eventDescription":
                         messages.push(`Exciting updates to the event details!`);
@@ -344,9 +395,8 @@ exports.updateEvent = async (req, res) => {
         if (hasImportantChange) {
             const config = await AppConfig.findOne({ isActive: true });
             if (config?.enable_event_update_notification) {
-                const notificationText = messages.join(" "); // Combine all messages
-                const userId = null; // Replace with logic to notify interested users
-                sendNotification("UPDATE_EVENT_NOTIFICATION", eventId, userId, notificationText);
+                const notificationText = messages.join(" ");
+                sendNotification("UPDATE_EVENT_NOTIFICATION", eventId, null, notificationText);
             }
         }
 

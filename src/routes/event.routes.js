@@ -25,7 +25,12 @@ router.post("/create",
 router.post('/', createEvent);       // Create an Event
 router.get('/', getEvents);          // Get All Events
 router.post('/single_event', getEventById);    // Get Event by ID
-router.put('/:id', upload.array("images"), updateEvent);     // Update an Event
+router.put('/:id',
+    upload.fields([
+        { name: "mainImage", maxCount: 1 }, // single
+        { name: "images", maxCount: 10 },   // multiple
+    ]),
+    updateEvent);     // Update an Event
 router.delete('/:id', deleteEvent);  // Delete an Event
 
 
