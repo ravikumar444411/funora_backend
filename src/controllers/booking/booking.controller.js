@@ -1,4 +1,6 @@
+const mongoose = require("mongoose");
 const QRCode = require("qrcode");
+const Cancellation = require("../../models/booking/cancellation.model");
 const Booking = require("../../models/booking/booking.model");
 const Charges = require("../../models/booking/charges.model");
 const Event = require("../../models/event.model");
@@ -6,7 +8,6 @@ const User = require("../../models/user.model");
 const { sendResponse } = require("../../utils/responseFormatter");
 const { uploadQrToS3 } = require("../../utils/s3Upload");
 const { v4: uuidv4 } = require("uuid");
-
 
 // show summary before payment Booking Summary API
 exports.getBookingSummary = async (req, res) => {
@@ -214,12 +215,14 @@ exports.confirmBookedSummary = async (req, res) => {
         }
 
         // Fetch booking and populate event & user info
-        const booking = await Booking.findOne({ _id: bookingId, status: "confirmed" })
-            .populate("eventId")
+        const booking = await Booking.findOne({
+            _id: bookingId,
+            status: { $in: ["confirmed", "partially_cancelled"] }
+        }).populate("eventId")
             .populate("userId");
 
         if (!booking) {
-            return sendResponse(res, false, [], "Booking not found or already book", 404);
+            return sendResponse(res, false, [], "Booking not found or not booked yet", 404);
         }
 
         const event = booking.eventId;
@@ -341,3 +344,104 @@ exports.getMyBookings = async (req, res) => {
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
+//cancellaton of ticket
+exports.cancelTicket = async (req, res) => {
+    try {
+        const { userId, bookingId, numberOfTicketsToCancel, reason } = req.body;
+
+        if (!userId || !bookingId || !numberOfTicketsToCancel || !reason) {
+            return sendResponse(res, false, [], "All fields are required", 400);
+        }
+
+        // ✅ Fetch booking
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return sendResponse(res, false, [], "Booking not found", 404);
+        }
+
+        if (booking.userId.toString() !== userId) {
+            return sendResponse(res, false, [], "Unauthorized cancellation attempt", 403);
+        }
+
+        // ✅ Calculate remaining tickets
+        const bookedQuantity = booking.tickets.quantity;
+        const alreadyCancelledTickets = await Cancellation.aggregate([
+            { $match: { bookingId: booking._id } },
+            { $group: { _id: null, total: { $sum: "$numberOfTicketsCancelled" } } },
+        ]);
+
+        const totalCancelled = alreadyCancelledTickets.length > 0 ? alreadyCancelledTickets[0].total : 0;
+        const remainingTickets = bookedQuantity - totalCancelled;
+
+        if (numberOfTicketsToCancel > remainingTickets) {
+            return sendResponse(res, false, [], "Not enough active tickets to cancel", 400);
+        }
+
+        // ✅ Refund calculation
+        const ticketPrice = booking.tickets.pricePerTicket;
+        const subtotalToRefund = numberOfTicketsToCancel * ticketPrice;
+
+        const cancellationChargeConfig = await Charges.findOne({
+            name: "cancellation_fee",
+            active: true,
+        });
+
+        let cancellationCharge = 0;
+        if (cancellationChargeConfig) {
+            if (cancellationChargeConfig.type === "percentage") {
+                cancellationCharge = (subtotalToRefund * cancellationChargeConfig.value) / 100;
+            } else {
+                cancellationCharge = cancellationChargeConfig.value;
+            }
+        }
+
+        const refundAmount = Math.max(subtotalToRefund - cancellationCharge, 0);
+
+        // ✅ Insert Cancellation entry
+        const cancellation = new Cancellation({
+            bookingId: booking._id,
+            cancelledBy: userId,
+            numberOfTicketsCancelled: numberOfTicketsToCancel,
+            reason,
+            refundStatus: refundAmount > 0 ? "Pending" : "Not Applicable",
+            refundAmount,
+        });
+
+        const savedCancellation = await cancellation.save();
+
+        // ✅ Update Booking: status + active ticket quantity
+        let newStatus = "partially_cancelled";
+        let activeTickets = remainingTickets - numberOfTicketsToCancel;
+
+        if (activeTickets === 0) {
+            newStatus = "cancelled";
+        }
+
+        booking.status = newStatus;
+        booking.tickets.quantity = activeTickets; // update active tickets
+        await booking.save();
+
+        return sendResponse(
+            res,
+            true,
+            {
+                cancellationId: savedCancellation._id,
+                bookingId: booking._id,
+                cancelledTickets: numberOfTicketsToCancel,
+                refundAmount,
+                newBookingStatus: newStatus,
+                activeTickets: activeTickets,
+            },
+            "Tickets cancelled successfully",
+            200
+        );
+
+    } catch (error) {
+        console.error("Cancel Ticket Error:", error);
+        return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
+
+

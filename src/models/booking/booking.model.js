@@ -33,7 +33,7 @@ const bookingSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ["pending", "confirmed", "cancelled", "not_initiate"],
+            enum: ["pending", "confirmed", "cancelled", "not_initiate", "partially_cancelled"],
             default: "pending",
         },
         qrCodeUrl: {
