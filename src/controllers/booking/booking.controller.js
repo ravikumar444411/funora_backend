@@ -214,11 +214,9 @@ exports.confirmBookedSummary = async (req, res) => {
             return sendResponse(res, false, [], "Booking ID is required", 400);
         }
 
-        // Fetch booking and populate event & user info
-        const booking = await Booking.findOne({
-            _id: bookingId,
-            status: { $in: ["confirmed", "partially_cancelled"] }
-        }).populate("eventId")
+        // Fetch booking with event & user info
+        const booking = await Booking.findOne({ _id: bookingId })
+            .populate("eventId")
             .populate("userId");
 
         if (!booking) {
@@ -228,8 +226,7 @@ exports.confirmBookedSummary = async (req, res) => {
         const event = booking.eventId;
         const user = booking.userId;
 
-
-        // Format media
+        // ✅ Format media
         const formattedMedia = event.media.map((url) => {
             const extension = url.split('.').pop().toLowerCase();
             if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
@@ -240,9 +237,38 @@ exports.confirmBookedSummary = async (req, res) => {
             return { type: "unknown", url };
         });
 
-        const imageMedia = formattedMedia.find((media) => media.type === "image");
+        const imageMedia = formattedMedia.find((m) => m.type === "image");
         const bannerUrl = imageMedia ? imageMedia.url : "";
 
+        // ✅ Check if cancellation exists
+        const cancellation = await Cancellation.findOne({ bookingId: booking._id })
+            .populate("cancelledBy", "fullName email phone");
+
+        // ✅ Prepare cancellation object
+        const isApplyCancel = cancellation ? true : false;
+        const cancellationDetails = cancellation
+            ? {
+                cancelledBy: cancellation.cancelledBy?.fullName || "",
+                cancelledById: cancellation.cancelledBy?._id || "",
+                cancelledAt: cancellation.cancelledAt || "",
+                numberOfTicketsCancelled: cancellation.numberOfTicketsCancelled || 0,
+                reason: cancellation.reason || "",
+                refundStatus: cancellation.refundStatus || "Pending",
+                refundAmount: cancellation.refundAmount || 0,
+                notes: cancellation.notes || "",
+            }
+            : {
+                cancelledBy: "",
+                cancelledById: "",
+                cancelledAt: "",
+                numberOfTicketsCancelled: 0,
+                reason: "",
+                refundStatus: "",
+                refundAmount: 0,
+                notes: "",
+            };
+
+        // ✅ Build response
         const responseData = {
             bookingCode: booking.bookingCode,
             bookingStatus: booking.status,
@@ -259,19 +285,28 @@ exports.confirmBookedSummary = async (req, res) => {
             eventTimeFrom: event.eventTimeFrom,
             eventTimeTo: event.eventTimeTo,
             eventVenue: event.eventVenue,
-            bannerUrl: bannerUrl,
+            bannerUrl,
             userId: user._id,
             userFullname: user.fullName,
             userEmail: user.email,
-            userPhone: user.phone
+            userPhone: user.phone,
+            isApplyCancel: isApplyCancel,
+            cancellation: cancellationDetails,
         };
 
-        return sendResponse(res, true, responseData, "Booking confirmed summary fetched successfully", 200);
+        return sendResponse(
+            res,
+            true,
+            responseData,
+            "Booking confirmed summary fetched successfully",
+            200
+        );
     } catch (error) {
         console.log("Confirm Booked Summary Error:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
 
 // Get All Booked Events of a User
 exports.getMyBookings = async (req, res) => {
