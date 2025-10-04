@@ -119,7 +119,7 @@ exports.initiateBooking = async (req, res) => {
 
         // Calculate total amount
         const totalCharges = Object.values(chargesAmount).reduce((a, b) => a + b, 0);
-        const totalAmount = subtotal + totalCharges;
+        const totalAmount = subtotal > 0 ? subtotal + totalCharges : subtotal;
 
         // Generate unique bookingCode
         const bookingCode = `BKNG_${Date.now()}_${uuidv4().slice(0, 6)}`;

@@ -2,6 +2,7 @@ const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const Notification = require('../models/notification.model');
 const Location = require("../models/location.model");
+const AppConfig = require("../models/appConfig.model");
 const { formatUserResponse, sendResponse } = require("../utils/responseFormatter");
 
 
@@ -84,6 +85,9 @@ exports.getUserById = async (req, res) => {
             .select("type gpsLocation manualLocation -_id")
             .lean();
 
+
+        let config = await AppConfig.findOne().select("enable_reminder_notification enable_new_event_notification enable_event_update_notification enable_payment_feature test_users").lean();
+
         // If no location is found, provide default empty structure
         if (!userLocation) {
             userLocation = {
@@ -119,7 +123,8 @@ exports.getUserById = async (req, res) => {
             email,
             profilePicture,
             dob,
-            location: userLocation
+            location: userLocation,
+            config: config
         };
 
         return sendResponse(res, true, responseData, "User fetched successfully", 200);
