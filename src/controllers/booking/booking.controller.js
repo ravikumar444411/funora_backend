@@ -318,7 +318,7 @@ exports.getMyBookings = async (req, res) => {
         }
 
         // Fetch all confirmed bookings of the user
-        const bookings = await Booking.find({ userId, status: { $in: ["pending", "confirmed", "cancelled"] } })
+        const bookings = await Booking.find({ userId, status: { $in: ["pending", "confirmed", "cancelled", "partially_cancelled"] } })
             .populate("eventId")
             .populate("userId")
             .sort({ createdAt: -1 }); // latest first
