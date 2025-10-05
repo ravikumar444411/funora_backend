@@ -90,6 +90,62 @@ exports.createEvent = async (req, res) => {
             );
         }
 
+        // ✅ Calculate or format eventDuration dynamically
+        let finalDuration = "Flexible timing";
+
+        const parseTime = (timeStr) => {
+            if (!timeStr) return null;
+            const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+            if (!match) return null;
+            const [_, hh, mm] = match;
+            const date = new Date();
+            date.setHours(parseInt(hh, 10), parseInt(mm, 10), 0, 0);
+            return date;
+        };
+
+        const formatDuration = (minutes) => {
+            if (minutes <= 0 || isNaN(minutes)) return "Flexible timing";
+            const hrs = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            let result = "";
+            if (hrs > 0) result += `${hrs} hr${hrs > 1 ? "s" : ""}`;
+            if (mins > 0) result += `${hrs > 0 ? " " : ""}${mins} min${mins > 1 ? "s" : ""}`;
+            return result || "Flexible timing";
+        };
+
+        // Case 1️⃣ - Explicit duration provided (e.g. "4 hr 30 min" or "90 min")
+        if (eventDuration && eventDuration.trim() !== "") {
+            // Parse flexible formats
+            const hrMatch = eventDuration.match(/(\d+)\s*hr/i);
+            const minMatch = eventDuration.match(/(\d+)\s*min/i);
+
+            let totalMinutes = 0;
+
+            if (hrMatch) totalMinutes += parseInt(hrMatch[1], 10) * 60;
+            if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
+
+            // If only numeric (like "120"), assume minutes
+            if (totalMinutes === 0 && !isNaN(parseInt(eventDuration))) {
+                totalMinutes = parseInt(eventDuration);
+            }
+
+            finalDuration = formatDuration(totalMinutes);
+        }
+        // Case 2️⃣ - Duration not provided but times available
+        else if (eventTimeFrom && eventTimeTo) {
+            const from = parseTime(eventTimeFrom);
+            const to = parseTime(eventTimeTo);
+
+            if (from && to && to > from) {
+                const diffMinutes = Math.floor((to - from) / (1000 * 60));
+                finalDuration = formatDuration(diffMinutes);
+            }
+        }
+        // Case 3️⃣ - No info at all
+        else {
+            finalDuration = "Flexible timing";
+        }
+
         // ✅ Save to DB
         const newEvent = new Event({
             eventTitle,
@@ -100,7 +156,7 @@ exports.createEvent = async (req, res) => {
             eventDateTo,
             eventTimeFrom,
             eventTimeTo,
-            eventDuration,
+            eventDuration: finalDuration,
             eventVenue,
             isPublic: isPublic === "true",
             mainImage: mainImageVariants,
@@ -114,14 +170,19 @@ exports.createEvent = async (req, res) => {
 
         // 🔹 Trigger notification
         const config = await AppConfig.findOne({ isActive: true });
-        if (config.enable_reminder_notification) {
-            const notificationText = `🎉 Just announced: ‘${newEvent.eventTitle}’ is coming soon! Don’t miss out—check it out now!`
-            sendNotification("CREATE_EVENT_NOTIFICATION", newEvent._id.toString(), null, notificationText);
+        if (config?.enable_reminder_notification) {
+            const notificationText = `🎉 Just announced: ‘${newEvent.eventTitle}’ is coming soon! Don’t miss out—check it out now!`;
+            sendNotification(
+                "CREATE_EVENT_NOTIFICATION",
+                newEvent._id.toString(),
+                null,
+                notificationText
+            );
         }
 
         return sendResponse(res, true, newEvent, "Event created successfully", 200);
     } catch (error) {
-        console.log("Create Event Error:", error);
+        console.error("Create Event Error:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };

@@ -82,8 +82,16 @@ const formatEventResponse = (event) => {
 // Helper function
 function getEventDuration(event) {
     // 1️⃣ Case: Explicit eventDuration field
-    if (event?.eventDuration && event.eventDuration > 0) {
-        return formatDuration(event.eventDuration);
+    if (event?.eventDuration) {
+        // If duration is a string (e.g. "4 hr 30 min"), return as-is
+        if (typeof event.eventDuration === "string") {
+            return event.eventDuration.trim();
+        }
+
+        // If duration is a number (in minutes)
+        if (typeof event.eventDuration === "number" && event.eventDuration > 0) {
+            return formatDuration(event.eventDuration);
+        }
     }
 
     // 2️⃣ Case: Derive from eventTimeFrom & eventTimeTo

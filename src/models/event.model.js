@@ -10,7 +10,7 @@ const eventSchema = new mongoose.Schema(
         eventDateTo: { type: Date, required: true },
         eventTimeFrom: { type: String, match: /^([01]\d|2[0-3]):([0-5]\d)$/ }, // HH:mm
         eventTimeTo: { type: String, match: /^([01]\d|2[0-3]):([0-5]\d)$/ },   // HH:mm
-        eventDuration: { type: String },
+        eventDuration: { type: String }, // mintues
         eventVenue: { type: String, required: true },
         isPublic: { type: Boolean, default: true },
 
