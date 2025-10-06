@@ -83,14 +83,25 @@ const formatEventResponse = (event) => {
 function getEventDuration(event) {
     // 1️⃣ Case: Explicit eventDuration field
     if (event?.eventDuration) {
-        // If duration is a string (e.g. "4 hr 30 min"), return as-is
-        if (typeof event.eventDuration === "string") {
-            return event.eventDuration.trim();
+        const value = event.eventDuration;
+
+        // If it's a number and greater than 0 → format it
+        if (typeof value === "number" && value > 0) {
+            return formatDuration(value);
         }
 
-        // If duration is a number (in minutes)
-        if (typeof event.eventDuration === "number" && event.eventDuration > 0) {
-            return formatDuration(event.eventDuration);
+        // If it's a string → check if it's numeric
+        if (typeof value === "string") {
+            const trimmed = value.trim();
+
+            // If string is numeric like "690" → treat as minutes
+            if (!isNaN(trimmed) && trimmed !== "") {
+                const num = Number(trimmed);
+                return num > 0 ? formatDuration(num) : "Flexible timing";
+            }
+
+            // Otherwise, return it as-is (like "4 hr 30 min")
+            return trimmed;
         }
     }
 
@@ -110,13 +121,15 @@ function getEventDuration(event) {
 }
 
 // Format helper: minutes → hours/mins
-function formatDuration(minutes) {
-    if (minutes < 60) {
-        return `${minutes} min${minutes > 1 ? "s" : ""}`;
-    }
-    const hours = Math.ceil(minutes / 60);
-    return `${hours} hr${hours > 1 ? "s" : ""}`;
-}
+const formatDuration = (minutes) => {
+    if (minutes <= 0 || isNaN(minutes)) return "Flexible timing";
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    let result = "";
+    if (hrs > 0) result += `${hrs} hr${hrs > 1 ? "s" : ""}`;
+    if (mins > 0) result += `${hrs > 0 ? " " : ""}${mins} min${mins > 1 ? "s" : ""}`;
+    return result || "Flexible timing";
+};
 
 const formatCategoryResponse = (category) => {
     return {
