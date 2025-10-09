@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const dayjs = require("dayjs");
 const User = require("../models/user.model");
 const { sendResponse } = require("../utils/responseFormatter");
 const { generateToken, verifyToken, verifyAndDecodeToken } = require("../utils/tokenService");
@@ -67,13 +68,14 @@ exports.completeUserProfile = async (req, res) => {
 
         let user = await User.findOne({ $or: query });
         const defaultPassword = await bcrypt.hash("Funora@123", 10);
+        const formattedDob = dayjs(dob, "DD-MM-YYYY").toDate();
 
         if (user) {
             // Update existing user
             user.fullName = fullName;
-            user.password = defaultPassword,
-                user.email = email;
-            user.dob = new Date(dob);
+            user.password = defaultPassword;
+            user.email = email;
+            user.dob = formattedDob;
             user.signup = true;
             await user.save();
 
@@ -92,7 +94,7 @@ exports.completeUserProfile = async (req, res) => {
                 phone,
                 fullName,
                 email,
-                dob: new Date(dob),
+                dob: formattedDob,
                 password: defaultPassword,
                 signup: true
             });
