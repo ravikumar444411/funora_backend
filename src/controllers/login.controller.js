@@ -51,71 +51,56 @@ exports.checkUser = async (req, res) => {
 exports.completeUserProfile = async (req, res) => {
     try {
         const { phone, fullName, dob, email } = req.body;
+        console.log("req body completeUserProfile ====> ", req.body);
 
-        console.log("req body completeUserProfile ====> ", req.body)
-        // Validate input
         if (!phone || !fullName || !dob || !email) {
-            return res.status(400).json({
-                success: false,
-                message: "Phone, full name, date of birth, and email are required",
-            });
+            return sendResponse(res, false, [], "Phone, full name, date of birth, and email are required", 400);
         }
 
-        // Check if user exists by phone or email
+        const formattedDob = dayjs(dob, "DD-MM-YYYY", true);
+        if (!formattedDob.isValid()) {
+            return sendResponse(res, false, [], "Invalid date format. Use DD-MM-YYYY.", 400);
+        }
+
+        const dobValue = formattedDob.toDate();
+        const defaultPassword = await bcrypt.hash("Funora@123", 10);
+
         const query = [];
         if (phone) query.push({ phone });
         if (email) query.push({ email });
 
         let user = await User.findOne({ $or: query });
-        const defaultPassword = await bcrypt.hash("Funora@123", 10);
-        const formattedDob = dayjs(dob, "DD-MM-YYYY").toDate();
 
         if (user) {
-            // Update existing user
             user.fullName = fullName;
-            user.password = defaultPassword;
             user.email = email;
-            user.dob = formattedDob;
+            user.dob = dobValue;
             user.signup = true;
+            if (!user.password) {
+                user.password = defaultPassword;
+            }
             await user.save();
 
-            // Generate token
             const token = await generateToken(user);
-
-            return res.status(200).json({
-                success: true,
-                message: "User profile updated successfully",
-                userId: user._id,
-                token
-            });
+            return sendResponse(res, true, { userId: user._id, token }, "User profile updated successfully", 200);
         } else {
-            // Create new user
             user = new User({
                 phone,
                 fullName,
                 email,
-                dob: formattedDob,
+                dob: dobValue,
                 password: defaultPassword,
                 signup: true
             });
 
             await user.save();
-
-            // Generate token
             const token = await generateToken(user);
 
-            return res.status(201).json({
-                success: true,
-                message: "User profile created successfully",
-                userId: user._id,
-                token
-            });
+            return sendResponse(res, true, { userId: user._id, token }, "User profile created successfully", 201);
         }
     } catch (error) {
         console.error("Error updating/creating user profile:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error",
-        });
+        return sendResponse(res, false, [], "Internal Server Error", 500);
     }
 };
+
