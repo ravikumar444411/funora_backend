@@ -242,3 +242,11 @@ cloudflared --version
 
 # run from the same account that runs your app (ec2-user)
 cloudflared tunnel --url http://localhost:3000
+
+
+
+
+#Check if debug.keystore exists
+dir C:\Users\HP\.android
+#et SHA-1 & SHA-256
+keytool -list -v -alias androiddebugkey -keystore C:\Users\HP\.android\debug.keystore -storepass android -keypass android

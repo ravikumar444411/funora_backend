@@ -1,7 +1,7 @@
 const express = require("express");
 const { sendOTP, verifyOTP, registerUser, loginUser, getUser, deleteUser,
     checkByphone, loginNew, verifyToken, registerNew, sendOtpToMobile, loginOrRegisterWithMobile,
-    verifyOtpWithMobile, completeUserProfile, loginWithPin, registerUserWithPin, checkUser } = require("../controllers/auth.controller");
+    verifyOtpWithMobile, completeUserProfile, loginWithPin, registerUserWithPin, checkUser, sendEmailOtp } = require("../controllers/auth.controller");
 const { authMiddleware } = require("../middlewares/authMiddleware");
 
 
@@ -16,6 +16,7 @@ router.post("/complete_profile", completeUserProfile);
 router.post("/checkUser", checkUser);
 router.post("/loginWithPin", loginWithPin);
 router.post("/registerUserWithPin", registerUserWithPin);
+router.post("/new-otp-login", sendEmailOtp);
 
 
 

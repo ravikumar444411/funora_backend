@@ -1,3 +1,5 @@
+// import axios from "axios";
+const axios = require("axios");
 const admin = require("../config/firebaseAdmin");
 const User = require("../models/user.model");
 const { sendResponse } = require("../utils/responseFormatter");
@@ -5,11 +7,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { generateToken, verifyToken, verifyAndDecodeToken } = require("../utils/tokenService");
 const OtpModel = require("../models/otp.model");
+const sgMail = require('@sendgrid/mail');
 
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY); // store key in env variables
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const verifySid = process.env.TWILIO_VERIFY_SID;
 const client = require("twilio")(accountSid, authToken);
+
+
+const FAST2SMS_KEY = process.env.FAST2SMS_KEY;
 
 //API to login and encode token
 exports.loginNew = async (req, res) => {
@@ -472,23 +480,23 @@ exports.loginOrRegisterWithMobile = async (req, res) => {
 
         if (true) {
             // Optional: Send SMS with OTP via Twilio
-            // await client.messages.create({
-            //     body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
-            //     from: process.env.TWILIO_PHONE_NUMBER,
-            //     to: phone,
-            // });
+            await client.messages.create({
+                body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
+                from: process.env.TWILIO_PHONE_NUMBER,
+                to: phone,
+            });
 
             //send OTP with whatsapp via twillio
-            try {
-                const message = await client.messages.create({
-                    from: "whatsapp:+14155238886",
-                    to: `whatsapp:${phone}`,
-                    body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
-                });
-                console.log("WhatsApp Message SID:", message.sid, message);
-            } catch (err) {
-                console.error("Twilio WhatsApp Error:", err);
-            }
+            // try {
+            //     const message = await client.messages.create({
+            //         from: "whatsapp:+14155238886",
+            //         to: `whatsapp:${phone}`,
+            //         body: `Hey there! Your Funora OTP is ${otpCode}. It’s valid for 1 minute. 🚀`,
+            //     });
+            //     console.log("WhatsApp Message SID:", message.sid, message);
+            // } catch (err) {
+            //     console.error("Twilio WhatsApp Error:", err);
+            // }
 
 
             resData.otpCode = otpCode
@@ -657,5 +665,44 @@ exports.registerUserWithPin = async (req, res) => {
     } catch (error) {
         console.error("Register user error:", error);
         return sendResponse(res, false, [], "Internal Server Error", 500);
+    }
+};
+
+exports.sendEmailOtp = async (req, res) => {
+    try {
+        const { userEmail } = req.body;
+        if (!userEmail) {
+            return res.status(400).json({ success: false, message: "Email is required" });
+        }
+
+        const otp = generateOtp();
+
+        const msg = {
+            to: userEmail,
+            from: 'ravikumar444452@gmail.com', // verified sender
+            subject: 'Your Funora OTP Code',
+            text: `Your OTP code is ${otp}. It will expire in 5 minutes.`,
+            html: `<p>Your OTP code is <strong>${otp}</strong>. It will expire in 5 minutes.</p>`,
+        };
+
+        await sgMail.send(msg);
+        console.log(`OTP sent successfully to ${userEmail}`);
+
+        // Optionally: store OTP in DB or cache (Redis) with expiry
+        // await saveOtp(userEmail, otp);
+
+        return res.status(200).json({
+            success: true,
+            data: { otp }, // only for testing, remove OTP in production
+            message: "OTP sent successfully",
+        });
+
+    } catch (error) {
+        console.error("❌ Email sending failed:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to send OTP",
+        });
     }
 };

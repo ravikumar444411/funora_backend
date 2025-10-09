@@ -18,6 +18,7 @@ const appConfigRoutes = require("./routes/appConfig.routes");
 const locationRoutes = require("./routes/location.routes");
 const feedbackRoutes = require("./routes/feedback.routes");
 const bookingRoutes = require("./routes/booking.routes");
+const LoginRoutes = require("./routes/login.routes");
 
 
 require("dotenv").config();
@@ -45,6 +46,7 @@ app.use("/api/appConfig", appConfigRoutes);
 app.use("/api/location", locationRoutes);
 app.use("/feedback", feedbackRoutes);
 app.use("/api/booking", bookingRoutes);
+app.use("/api/new-auth", LoginRoutes);
 
 
 // to upload file
