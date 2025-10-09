@@ -51,6 +51,7 @@ exports.completeUserProfile = async (req, res) => {
     try {
         const { phone, fullName, dob, email } = req.body;
 
+        console.log("req body completeUserProfile ====> ", req.body)
         // Validate input
         if (!phone || !fullName || !dob || !email) {
             return res.status(400).json({

@@ -245,6 +245,9 @@ cloudflared tunnel --url http://localhost:3000
 
 
 
+#create jks file
+keytool -genkeypair -v -keystore "F:\funora\code base\frontend\funora_new_7\android\app\funora-release-key.jks" -alias funora-key -keyalg RSA -keysize 2048 -validity 10000
+
 
 #Check if debug.keystore exists
 dir C:\Users\HP\.android
