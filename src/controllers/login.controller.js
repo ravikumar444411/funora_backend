@@ -3,7 +3,8 @@ const dayjs = require("dayjs");
 const User = require("../models/user.model");
 const { sendResponse } = require("../utils/responseFormatter");
 const { generateToken, verifyToken, verifyAndDecodeToken } = require("../utils/tokenService");
-
+const customParseFormat = require("dayjs/plugin/customParseFormat");
+dayjs.extend(customParseFormat);
 
 exports.checkUser = async (req, res) => {
     try {
